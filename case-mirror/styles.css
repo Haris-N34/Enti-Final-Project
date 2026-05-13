@@ -724,28 +724,18 @@ body {
 }
 
 .cm-brand-mark {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
 }
 
-.cm-brand-mark svg {
-  width: 28px;
-  height: 28px;
-  fill: none;
-}
-
-.cm-brand-mark rect {
-  stroke: #0f2742;
-  stroke-width: 1.5;
-}
-
-.cm-brand-mark path {
-  stroke: #1f8c8a;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.cm-brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .cm-brand-copy strong,
