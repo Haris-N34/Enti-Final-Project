@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Case Mirror Live Rehearsal</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      .live-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .live-timer {
+        font-size: 3rem;
+        font-weight: 900;
+        color: var(--navy);
+        line-height: 1;
+      }
+
+      .pulse-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--coral);
+        margin-right: 8px;
+      }
+
+      .pulse-dot.on {
+        background: var(--green);
+        box-shadow: 0 0 0 5px rgba(47, 125, 87, 0.16);
+      }
+
+      .transcript-box {
+        min-height: 180px;
+        white-space: pre-wrap;
+        color: var(--ink);
+      }
+
+      .camera-stage {
+        position: relative;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #0d1721;
+      }
+
+      .camera-stage video,
+      .camera-stage canvas {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+      }
+
+      .camera-stage canvas {
+        position: absolute;
+        inset: 0;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      @media (max-width: 980px) {
+        .live-layout {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="./index.html">
+          <span class="brand-mark">CM</span>
+          <span>
+            <strong>Case Mirror</strong>
+            <small>Live rehearsal</small>
+          </span>
+        </a>
+        <nav class="nav" aria-label="Live navigation">
+          <a href="./index.html">MVP flow</a>
+          <a class="active" href="./live.html">Live practice</a>
+        </nav>
+        <button class="ghost-btn" id="resetBtn" type="button">Reset</button>
+      </header>
+
+      <main class="page stack">
+        <div class="section-head">
+          <div>
+            <h1>Live Presentation Practice</h1>
+            <p>Read slides first, build a market/context brief, track your spoken answer, and get judge-style follow-ups.</p>
+          </div>
+          <button class="primary-btn" id="prepareBtn" type="button">Prepare questions</button>
+        </div>
+
+        <div class="disclaimer">
+          <strong>Observable feedback only.</strong>
+          <span>This page tracks transcript timing, fillers, pose visibility, posture stability, and movement proxies. It does not infer emotion, protected traits, personality, or official judging outcomes.</span>
+        </div>
+
+        <section class="panel">
+          <h2>Slides and Case Context</h2>
+          <div class="field-grid">
+            <div class="field">
+              <label for="company">Company or client</label>
+              <input id="company" placeholder="Example: EcoRide" />
+            </div>
+            <div class="field">
+              <label for="industry">Industry</label>
+              <input id="industry" placeholder="Example: micromobility, campus transport" />
+            </div>
+            <div class="field full">
+              <label for="casePrompt">Case prompt</label>
+              <textarea id="casePrompt" placeholder="Paste the case prompt or judging rubric."></textarea>
+            </div>
+            <div class="field full">
+              <label for="slideFile">Upload slide text or notes</label>
+              <input id="slideFile" type="file" accept=".txt,.md,.csv,.json" />
+              <span class="hint">For now, this live page reads text-based slide exports. For PDF/PPTX slide rendering, use the backend upload pipeline.</span>
+            </div>
+            <div class="field full">
+              <label for="slideText">Slide text / speaker notes</label>
+              <textarea class="large" id="slideText" placeholder="Paste slide titles, bullets, notes, or a text export of your deck."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="grid three-col" id="prepOutput"></section>
+
+        <section class="live-layout">
+          <div class="stack">
+            <div class="panel question-card">
+              <div class="progress">
+                <strong id="questionLabel">Question 1 of 6</strong>
+                <div class="progress-rail"><span id="questionProgress" style="width: 0%"></span></div>
+              </div>
+              <div class="question-text" id="currentQuestion">Prepare questions to begin.</div>
+              <div class="action-row">
+                <button class="primary-btn" id="startBtn" type="button">Start answering</button>
+                <button class="secondary-btn" id="stopBtn" type="button">Stop and grade</button>
+                <button class="secondary-btn" id="nextBtn" type="button">Next question</button>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2>Live Transcript</h2>
+              <div class="transcript-box" id="transcriptBox">Your transcript will appear here.</div>
+            </div>
+
+            <div class="panel" id="gradeOutput">
+              <h2>Live Grade</h2>
+              <p class="hint">Answer a question to get scoring and a follow-up.</p>
+            </div>
+          </div>
+
+          <aside class="stack">
+            <div class="panel">
+              <h2>Tracker</h2>
+              <div class="live-timer" id="timer">00:00</div>
+              <div class="metric-strip">
+                <div class="metric"><strong id="wordCount">0</strong><span>words</span></div>
+                <div class="metric"><strong id="fillerCount">0</strong><span>fillers</span></div>
+                <div class="metric"><strong id="wpm">0</strong><span>wpm</span></div>
+                <div class="metric"><strong><span class="pulse-dot" id="micDot"></span></strong><span>mic</span></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2>Body Metrics</h2>
+              <div class="metric-strip">
+                <div class="metric"><strong id="poseVisible">0%</strong><span>pose visible</span></div>
+                <div class="metric"><strong id="postureStability">0</strong><span>stability</span></div>
+                <div class="metric"><strong id="gestureRate">0</strong><span>gestures/min</span></div>
+                <div class="metric"><strong id="engagementProxy">0%</strong><span>camera proxy</span></div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2>Voice Metrics</h2>
+              <div class="metric-strip">
+                <div class="metric"><strong id="audioEnergy">n/a</strong><span>energy</span></div>
+                <div class="metric"><strong id="audioVariation">n/a</strong><span>variation</span></div>
+                <div class="metric"><strong id="silencePct">n/a</strong><span>low audio</span></div>
+                <div class="metric"><strong id="transcriptSource">Idle</strong><span>source</span></div>
+              </div>
+            </div>
+
+            <div class="panel webcam-box">
+              <h2>Camera Preview</h2>
+              <div class="camera-stage">
+                <video id="camera" autoplay muted playsinline></video>
+                <canvas id="poseCanvas"></canvas>
+              </div>
+              <button class="secondary-btn" id="cameraBtn" type="button">Enable camera</button>
+              <p class="hint">No video is recorded. Metrics come from local browser pose/motion estimates.</p>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./live.js"></script>
+  </body>
+</html>
