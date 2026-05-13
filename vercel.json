@@ -1,10 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/case-mirror/",
-      "permanent": false
-    }
-  ]
+  "outputDirectory": "case-mirror"
 }
