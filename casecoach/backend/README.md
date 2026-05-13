@@ -33,13 +33,14 @@ CASECOACH_DATA_DIR=./data
 DATABASE_URL=sqlite:///./data/casecoach.sqlite3
 QWEN_VL_BASE_URL=
 QWEN_VL_API_KEY=
-QWEN_VL_MODEL=Qwen/Qwen3-VL-8B-Instruct
+QWEN_VL_MODEL=qwen3.6-plus
 QWEN_OMNI_BASE_URL=
 QWEN_OMNI_API_KEY=
 QWEN_OMNI_MODEL=Qwen/Qwen3-Omni-30B-A3B-Thinking
 ASR_PROVIDER=faster_whisper
 ASR_MODEL=base
 MAX_UPLOAD_MB=1024
+TAVILY_API_KEY=
 ```
 
 ## API
@@ -56,4 +57,3 @@ MAX_UPLOAD_MB=1024
 ## Safety Principle
 
 The backend separates observable metrics from interpretation. It must not infer protected traits, emotion, personality, official judging outcomes, or winner likelihood. Feedback should stay grounded in timestamps, transcript text, slide content, and computed metrics.
-

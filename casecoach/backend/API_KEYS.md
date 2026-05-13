@@ -15,7 +15,38 @@ Set:
 ```bash
 QWEN_VL_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 QWEN_VL_API_KEY=your_key_here
-QWEN_VL_MODEL=Qwen/Qwen3-VL-8B-Instruct
+QWEN_VL_MODEL=qwen3.6-plus
+```
+
+If `QWEN_VL_MODEL` is a numeric Alibaba Model Studio application ID, such as `210965`, the backend automatically calls the DashScope application endpoint instead:
+
+```text
+https://dashscope-intl.aliyuncs.com/api/v1/apps/{APP_ID}/completion
+```
+
+Use numeric IDs for Model Studio Applications. Use model names such as `qwen-plus` or a Qwen model ID for OpenAI-compatible `/chat/completions`.
+
+For the current live rehearsal setup, use:
+
+```bash
+QWEN_VL_MODEL=qwen3.6-plus
+```
+
+Optional market research uses Tavily:
+
+- API docs: https://docs.tavily.com/documentation/api-reference/endpoint/search
+
+```bash
+TAVILY_API_KEY=your_tavily_key_here
+```
+
+Live speech transcription uses Deepgram temporary tokens:
+
+- Token auth docs: https://developers.deepgram.com/guides/fundamentals/token-based-authentication
+- Live audio WebSocket docs: https://developers.deepgram.com/reference/speech-to-text/listen-streaming
+
+```bash
+DEEPGRAM_API_KEY=your_deepgram_key_here
 ```
 
 Alibaba documents these OpenAI-compatible base URLs by region:
@@ -42,4 +73,3 @@ Use this if you self-host Qwen3-VL/Qwen3-Omni on a remote GPU and expose an Open
 - API keys are in the RunPod console under Settings > API Keys.
 
 The CaseCoach backend does not call RunPod directly yet. If you deploy a vLLM/SGLang server on RunPod, put that server's endpoint and bearer token into `QWEN_VL_BASE_URL` and `QWEN_VL_API_KEY`.
-
