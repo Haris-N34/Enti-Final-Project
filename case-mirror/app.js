@@ -1563,7 +1563,7 @@ function renderReport() {
           <div class="cm-report-cover-grid">
             <div>
               <span class="cm-report-kicker">${escapeHtml(state.session.companyName || "Untitled case")} · practice transcript</span>
-              <h1>You're <em>almost</em> ready for the panel.</h1>
+              <h1>You're <em>almost</em> ready for the competition.</h1>
               <p>
                 Five of your answers held up well enough to rehearse live.
                 The recommendation is structurally stronger than the weaker
