@@ -630,16 +630,13 @@ function improvedAnswer(session, answer) {
 
 function render() {
   const route = routeFromHash();
-  document.querySelectorAll("[data-nav]").forEach((link) => {
-    const nav = link.getAttribute("data-nav");
-    link.classList.toggle("active", nav === route || (route === "home" && nav === "home"));
-  });
 
   if (route === "setup") renderSetup();
   else if (route === "brief") renderBrief();
   else if (route === "rehearsal") renderRehearsal();
   else if (route === "report") renderReport();
   else renderHome();
+  bindChromeActions();
   app.focus({ preventScroll: true });
 }
 
@@ -647,45 +644,243 @@ function loadingMarkup(label) {
   return `<span class="loading"><span class="spinner"></span>${escapeHtml(label)}</span>`;
 }
 
-function renderHome() {
-  app.innerHTML = `
-    <section class="page hero">
-      <div class="hero-copy">
-        <div class="eyebrow">AI-assisted rehearsal for university case teams</div>
-        <h1>Practice for the exact case competition you are about to present.</h1>
-        <p class="lead">Paste the case prompt, judging criteria, team recommendation, and optional context. Case Mirror turns them into a focused prep brief, recommendation critique, judge Q&amp;A rehearsal, and readiness report.</p>
-        <div class="hero-actions">
-          <button class="primary-btn" id="startBtn" type="button">Start prep</button>
-          <button class="secondary-btn" id="sampleBtn" type="button">Load sample case</button>
-        </div>
-        <div class="disclaimer">
-          <strong>Practice only.</strong>
-          <span>Case Mirror provides preparation feedback, not official judging or competition outcome predictions. Follow your competition's AI usage rules and avoid pasting confidential materials if rules prohibit it.</span>
-        </div>
-      </div>
+function initials(name) {
+  return String(name || "CM")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("") || "CM";
+}
 
-      <div class="hero-visual" aria-label="Case Mirror analysis preview">
-        <div class="visual-photo" role="img" aria-label="Students discussing a presentation in a meeting room"></div>
-        <div class="signal-board">
-          <div class="signal-row">
-            <span>Prompt alignment</span>
-            <div class="bar"><span style="width: 78%"></span></div>
-            <strong>78</strong>
-          </div>
-          <div class="signal-row">
-            <span>Risk defense</span>
-            <div class="bar amber"><span style="width: 61%"></span></div>
-            <strong>61</strong>
-          </div>
-          <div class="signal-row">
-            <span>Judge Q&amp;A</span>
-            <div class="bar coral"><span style="width: 54%"></span></div>
-            <strong>54</strong>
-          </div>
-        </div>
+function topNavMarkup(step = 0) {
+  const progress = [
+    { route: "setup", label: "Setup" },
+    { route: "brief", label: "Brief" },
+    { route: "rehearsal", label: "Q&A" },
+    { route: "report", label: "Report" }
+  ];
+
+  const homeLinks = `
+    <nav class="cm-home-links" aria-label="Main">
+      <a href="#/">Home</a>
+      <a href="#/setup">Method</a>
+      <a href="#/report">Sample report</a>
+      <a href="#/rehearsal">For teams</a>
+    </nav>
+  `;
+
+  const stepLinks = `
+    <div class="cm-step-links" aria-label="Progress">
+      ${progress
+        .map((item, index) => {
+          const itemStep = index + 1;
+          const stateClass = itemStep < step ? "done" : itemStep === step ? "active" : "";
+          return `
+            <a class="cm-step-link ${stateClass}" href="#/${item.route}">
+              <span class="cm-step-dot">${itemStep < step ? "✓" : itemStep}</span>
+              <span>${item.label}</span>
+            </a>
+          `;
+        })
+        .join('<span class="cm-step-divider"></span>')}
+    </div>
+  `;
+
+  return `
+    <header class="cm-topbar">
+      <a class="cm-brand" href="#/">
+        <span class="cm-brand-mark">
+          <svg viewBox="0 0 28 28" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="25" height="25" rx="6"></rect>
+            <path d="M8 14 L13 19 L20 9"></path>
+          </svg>
+        </span>
+        <span class="cm-brand-copy">
+          <strong>Case Mirror</strong>
+          <small>Competition prep</small>
+        </span>
+      </a>
+
+      ${step === 0 ? homeLinks : stepLinks}
+
+      <div class="cm-topbar-actions">
+        ${step === 0 ? '<a class="cm-link-btn" href="#/report">Preview report</a>' : `<span class="cm-session-chip">session · ${escapeHtml(initials(state.session.companyName || "CM"))}-${state.session.id.slice(0, 4)}</span>`}
+        <button class="cm-pill-btn cm-pill-btn--ghost" id="clearSessionBtn" type="button">Clear session</button>
+        ${step === 0 ? '<a class="cm-pill-btn cm-pill-btn--teal" href="#/setup">Start session</a>' : '<a class="cm-pill-btn cm-pill-btn--navy" href="#/">Home</a>'}
       </div>
+    </header>
+  `;
+}
+
+function shellMarkup(step, bodyMarkup, extraClass = "") {
+  return `
+    <section class="cm-page ${extraClass}">
+      ${topNavMarkup(step)}
+      ${bodyMarkup}
     </section>
   `;
+}
+
+function scoreLabel(value) {
+  if (value >= 80) return "Clear";
+  if (value >= 68) return "Steady";
+  if (value >= 55) return "Watch";
+  return "Thin";
+}
+
+function scoreTone(value) {
+  if (value >= 80) return "good";
+  if (value >= 68) return "good";
+  if (value >= 55) return "warn";
+  return "warn";
+}
+
+function bindChromeActions() {
+  document.getElementById("clearSessionBtn")?.addEventListener("click", clearSession);
+}
+
+function renderHome() {
+  app.innerHTML = shellMarkup(
+    0,
+    `
+      <section class="cm-hero">
+        <div class="cm-hero-media">
+          <div class="cm-orb cm-orb--teal"></div>
+          <div class="cm-orb cm-orb--blue"></div>
+          <div class="cm-media-card">
+            <div class="cm-live-chip">Live brief</div>
+            <div class="cm-placeholder cm-placeholder--blue" aria-label="Case brief preview">
+              <span>[ Case brief preview ]</span>
+              <small>Generated brief on a desk / over-the-shoulder team prep</small>
+            </div>
+            <div class="cm-floating-metric">
+              <div class="cm-metric-head">
+                <span>Readiness</span>
+                <strong>68.5%</strong>
+              </div>
+              <div class="cm-sparkbars">
+                <span style="height: 14px"></span>
+                <span style="height: 22px"></span>
+                <span style="height: 18px"></span>
+                <span style="height: 28px"></span>
+                <span style="height: 25px"></span>
+                <span style="height: 32px" class="accent"></span>
+                <span style="height: 27px" class="accent-dark"></span>
+                <span style="height: 30px" class="accent"></span>
+              </div>
+              <p>Across 5 typed answers · practice feedback only</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="cm-hero-copy">
+          <span class="cm-badge cm-badge--teal">AI rehearsal</span>
+          <h1>Case-<span>Ready.</span><br />Question-Ready.</h1>
+          <p>
+            Practice for the exact case competition you're about to present.
+            Paste the prompt, run a judge Q&amp;A, and get a written readiness
+            report with strengths, risks, and the answers you still owe.
+          </p>
+          <div class="cm-hero-actions">
+            <button class="primary-btn cm-button-lift" id="startBtn" type="button">Start a session</button>
+            <button class="secondary-btn cm-video-btn" id="sampleBtn" type="button">
+              Load sample case
+              <span>▶</span>
+            </button>
+          </div>
+          <div class="cm-rating">
+            <div class="cm-stars"><strong>4.9</strong><span>★★★★★</span></div>
+            <div class="cm-avatars">
+              <span>CK</span><span>MO</span><span>RA</span><span>+11</span>
+            </div>
+            <p>Case teams at 14 universities rehearse with Case Mirror before competition weekends.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="cm-section">
+        <div class="cm-section-head">
+          <div>
+            <span class="cm-badge cm-badge--blue">Method</span>
+            <h2>Built for the case<br />you're about to present.</h2>
+          </div>
+          <div class="cm-section-copy">
+            <span class="cm-eyebrow">How it works</span>
+            <p>Three steps. One written readiness report at the end. Run the loop before the panel and the answers stop being improvised.</p>
+          </div>
+        </div>
+
+        <div class="cm-feature-grid">
+          <article class="cm-feature-card">
+            <span class="cm-badge cm-badge--teal">Generated</span>
+            <h3>Parallel Brief</h3>
+            <p>A brief shaped like the case room: situation, core decision, likely pressure points, and defensible questions.</p>
+            <div class="cm-placeholder cm-placeholder--soft"><span>[ Brief mock ]</span></div>
+            <div class="cm-card-foot"><span>01 / 03</span><a href="#/brief">See example</a></div>
+          </article>
+
+          <article class="cm-feature-card cm-feature-card--focus">
+            <div class="cm-card-top">
+              <span class="cm-badge cm-badge--lavender">Rehearsal</span>
+              <div class="cm-arrow-pair"><span>←</span><span>→</span></div>
+            </div>
+            <h3>Judge Q&amp;A</h3>
+            <p>Typed answers first. Mic and camera are optional, never required. The panel voice stays grounded in the case you pasted.</p>
+            <div class="cm-placeholder cm-placeholder--lavender">
+              <span>[ Q&amp;A transcript ]</span>
+              <small>Judge prompt + your answer + practice note</small>
+            </div>
+            <a class="cm-blue-link" href="#/rehearsal">See sample Q&amp;A <span>↗</span></a>
+          </article>
+
+          <article class="cm-feature-card">
+            <span class="cm-badge cm-badge--green">Output</span>
+            <h3>Readiness Report</h3>
+            <p>Strengths, risks, and the answers you still owe. Written feedback, not official judging and not winner prediction.</p>
+            <div class="cm-placeholder cm-placeholder--green"><span>[ Report mock ]</span></div>
+            <div class="cm-card-foot"><span>03 / 03</span><a href="#/report">Sample report</a></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="cm-section cm-team-grid">
+        <div class="cm-team-copy">
+          <span class="cm-badge cm-badge--teal">For teams</span>
+          <h2>Rehearsing the<br />case competition.</h2>
+          <p>
+            We help university case teams walk into the room having already
+            practiced the questions they will face — calmly, in writing, before
+            the panel opens its mouth.
+          </p>
+          <ul class="cm-check-list">
+            <li>Prompt-aligned practice</li>
+            <li>Typed-answer first</li>
+            <li>Written readiness report</li>
+          </ul>
+        </div>
+
+        <div class="cm-team-panels">
+          <div class="cm-stat-stack">
+            <article class="cm-stat-card cm-stat-card--teal"><strong>1,800+</strong><span>rehearsals run</span></article>
+            <article class="cm-stat-card cm-stat-card--blue"><strong>5</strong><span>judge questions per run</span></article>
+            <article class="cm-stat-card cm-stat-card--green"><strong>0</strong><span>body-language scoring</span></article>
+          </div>
+          <article class="cm-dark-panel">
+            <div class="cm-placeholder cm-placeholder--dark">
+              <span>[ Team rehearsal image ]</span>
+              <small>Presentation practice in front of a panel</small>
+            </div>
+            <div class="cm-dark-panel-copy">
+              <strong>Practice feedback only</strong>
+              <p>No emotion analysis, no personality scoring, no winner prediction, no official judging.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+    `,
+    "cm-home"
+  );
 
   document.getElementById("startBtn").addEventListener("click", () => go("setup"));
   document.getElementById("sampleBtn").addEventListener("click", () => {
@@ -698,94 +893,128 @@ function renderHome() {
 
 function renderSetup() {
   const session = state.session;
-  app.innerHTML = `
-    <section class="page">
-      <div class="section-head">
+  app.innerHTML = shellMarkup(
+    1,
+    `
+      <section class="cm-section cm-setup-head">
         <div>
-          <h1>Case Setup</h1>
-          <p>Paste the materials your team is already using. Judging criteria are recommended; if they are blank, the app uses a general case competition rubric.</p>
+          <span class="cm-badge cm-badge--teal">Step 1 · Setup</span>
+          <h1 class="cm-page-title">Set up your <span>rehearsal.</span></h1>
+          <p class="cm-page-lead">Paste the materials your team is already using. Judging criteria are recommended, but the app still works with a general rubric if you leave them blank.</p>
         </div>
         <button class="secondary-btn" id="loadSampleSetupBtn" type="button">Load sample</button>
-      </div>
+      </section>
 
-      <div class="grid two-col">
-        <form class="panel stack" id="setupForm">
-          ${state.error ? `<div class="panel danger">${escapeHtml(state.error)}</div>` : ""}
-          <div class="field-grid">
-            <div class="field full">
-              <label for="casePrompt">Case prompt <span class="error-text">*</span></label>
+      <section class="cm-form-layout">
+        <form class="cm-card cm-form-card" id="setupForm">
+          ${state.error ? `<div class="cm-alert cm-alert--danger">${escapeHtml(state.error)}</div>` : ""}
+
+          <div class="cm-form-section">
+            <div class="cm-form-label">
+              <span>01</span>
+              <div>
+                <h3>The case prompt</h3>
+                <p>Paste the exact prompt your team received. The closer to verbatim, the closer the rehearsal.</p>
+              </div>
+            </div>
+            <label class="cm-field full">
+              <span>Case prompt <em>*</em></span>
               <textarea class="large" id="casePrompt" data-field="casePrompt" placeholder="Paste the full case prompt, client objective, constraints, and required deliverable.">${escapeHtml(session.casePrompt)}</textarea>
-              ${state.setupErrors.casePrompt ? `<span class="error-text">${state.setupErrors.casePrompt}</span>` : ""}
-            </div>
+              ${state.setupErrors.casePrompt ? `<small class="error-text">${state.setupErrors.casePrompt}</small>` : ""}
+            </label>
+          </div>
 
-            <div class="field full">
-              <label for="teamRecommendation">Team recommendation or current solution <span class="error-text">*</span></label>
+          <div class="cm-form-divider"></div>
+
+          <div class="cm-form-section">
+            <div class="cm-form-label">
+              <span>02</span>
+              <div>
+                <h3>Your current recommendation</h3>
+                <p>Paste the draft recommendation, slide notes, or rough solution your team wants to defend.</p>
+              </div>
+            </div>
+            <label class="cm-field full">
+              <span>Team recommendation <em>*</em></span>
               <textarea class="large" id="teamRecommendation" data-field="teamRecommendation" placeholder="Paste your current recommendation, rough solution, slide notes, or strategic direction.">${escapeHtml(session.teamRecommendation)}</textarea>
-              ${state.setupErrors.teamRecommendation ? `<span class="error-text">${state.setupErrors.teamRecommendation}</span>` : ""}
-            </div>
+              ${state.setupErrors.teamRecommendation ? `<small class="error-text">${state.setupErrors.teamRecommendation}</small>` : ""}
+            </label>
+          </div>
 
-            <div class="field full">
-              <label for="judgingCriteria">Judging criteria or rubric</label>
-              <textarea id="judgingCriteria" data-field="judgingCriteria" placeholder="Paste the official rubric if you have it.">${escapeHtml(session.judgingCriteria)}</textarea>
-              <span class="hint">Recommended but not required.</span>
-            </div>
+          <div class="cm-form-divider"></div>
 
-            <div class="field">
-              <label for="companyName">Company or organization</label>
-              <input id="companyName" data-field="companyName" value="${escapeHtml(session.companyName)}" placeholder="Example: EcoRide" />
+          <div class="cm-form-section">
+            <div class="cm-form-label">
+              <span>03</span>
+              <div>
+                <h3>Rubric and case context</h3>
+                <p>Give the judges' lens and any context that would change how the panel presses your answers.</p>
+              </div>
             </div>
-
-            <div class="field">
-              <label for="targetPresentationLength">Target presentation length</label>
-              <input id="targetPresentationLength" data-field="targetPresentationLength" value="${escapeHtml(session.targetPresentationLength)}" placeholder="Example: 10 minutes" />
-            </div>
-
-            <div class="field full">
-              <label for="industryContext">Industry context</label>
-              <textarea id="industryContext" data-field="industryContext" placeholder="Optional company, market, competitor, or industry notes.">${escapeHtml(session.industryContext)}</textarea>
-            </div>
-
-            <div class="field full">
-              <label for="teamConstraints">Team constraints</label>
-              <textarea id="teamConstraints" data-field="teamConstraints" placeholder="Optional time, budget, data, implementation, or team constraints.">${escapeHtml(session.teamConstraints)}</textarea>
-            </div>
-
-            <div class="field full">
-              <label for="slideOutline">Slide outline or speaking notes</label>
-              <textarea id="slideOutline" data-field="slideOutline" placeholder="Optional slide outline, speaking notes, or current deck structure.">${escapeHtml(session.slideOutline)}</textarea>
+            <div class="cm-field-grid">
+              <label class="cm-field full">
+                <span>Judging criteria or rubric</span>
+                <textarea id="judgingCriteria" data-field="judgingCriteria" placeholder="Paste the official rubric if you have it.">${escapeHtml(session.judgingCriteria)}</textarea>
+                <small class="hint">Recommended but not required.</small>
+              </label>
+              <label class="cm-field">
+                <span>Company or organization</span>
+                <input id="companyName" data-field="companyName" value="${escapeHtml(session.companyName)}" placeholder="Example: EcoRide" />
+              </label>
+              <label class="cm-field">
+                <span>Target presentation length</span>
+                <input id="targetPresentationLength" data-field="targetPresentationLength" value="${escapeHtml(session.targetPresentationLength)}" placeholder="Example: 10 minutes" />
+              </label>
+              <label class="cm-field full">
+                <span>Industry context</span>
+                <textarea id="industryContext" data-field="industryContext" placeholder="Optional company, market, competitor, or industry notes.">${escapeHtml(session.industryContext)}</textarea>
+              </label>
+              <label class="cm-field full">
+                <span>Team constraints</span>
+                <textarea id="teamConstraints" data-field="teamConstraints" placeholder="Optional time, budget, data, implementation, or team constraints.">${escapeHtml(session.teamConstraints)}</textarea>
+              </label>
+              <label class="cm-field full">
+                <span>Slide outline or speaking notes</span>
+                <textarea id="slideOutline" data-field="slideOutline" placeholder="Optional slide outline, speaking notes, or current deck structure.">${escapeHtml(session.slideOutline)}</textarea>
+              </label>
             </div>
           </div>
 
-          <div class="split-actions">
-            <button class="primary-btn" type="submit" ${state.loading ? "disabled" : ""}>
-              ${state.loading === "brief" ? "Generating..." : "Generate Case Brief"}
-            </button>
-            ${state.loading === "brief" ? loadingMarkup("Building a targeted prep brief") : ""}
+          <div class="cm-form-actions">
+            <div class="cm-form-status">Nothing is submitted to your real judges. Practice feedback only.</div>
+            <div class="cm-form-action-group">
+              ${state.loading === "brief" ? loadingMarkup("Building a targeted prep brief") : ""}
+              <button class="primary-btn cm-button-lift" type="submit" ${state.loading ? "disabled" : ""}>${state.loading === "brief" ? "Generating..." : "Generate brief"}</button>
+            </div>
           </div>
         </form>
 
-        <aside class="stack">
-          <div class="panel soft">
-            <h3>Academic integrity note</h3>
-            <p class="hint">Use this as critique and rehearsal. Do not use it to fabricate case facts, bypass competition rules, or replace original team thinking.</p>
-          </div>
-          <div class="panel">
-            <h3>What the brief will include</h3>
-            <ul class="mini-list">
-              <li>Problem summary and key decision</li>
-              <li>Likely judge priorities</li>
-              <li>Recommendation strengths and weak points</li>
-              <li>Assumptions, risks, story arc, and likely hard questions</li>
+        <aside class="cm-sidebar">
+          <section class="cm-card">
+            <span class="cm-eyebrow">What you'll get</span>
+            <h3>A parallel brief, written Q&amp;A, and a readiness report.</h3>
+            <ul class="cm-aside-list">
+              <li><strong>01 · Case brief</strong><span>Problem summary, key decision, story arc, likely judge questions.</span></li>
+              <li><strong>02 · Judge Q&amp;A</strong><span>Five prompts plus adaptive follow-ups in the competition's voice.</span></li>
+              <li><strong>03 · Final report</strong><span>Strengths, risks, practice priorities, and answer-level notes.</span></li>
             </ul>
-          </div>
-          <div class="panel warn">
-            <h3>No account needed</h3>
-            <p class="hint">This MVP stores only the current session in localStorage on this browser. Use Clear session to reset it.</p>
-          </div>
+          </section>
+
+          <section class="cm-card">
+            <div class="cm-placeholder cm-placeholder--teal cm-placeholder--short">
+              <span>[ Live brief preview ]</span>
+              <small>Updates as you fill the form</small>
+            </div>
+            <div class="cm-note-stack">
+              <strong>Academic integrity note</strong>
+              <p>Use this for critique and rehearsal. Do not fabricate facts, bypass competition rules, or replace original team thinking.</p>
+            </div>
+          </section>
         </aside>
-      </div>
-    </section>
-  `;
+      </section>
+    `,
+    "cm-setup"
+  );
 
   document.querySelectorAll("[data-field]").forEach((field) => {
     field.addEventListener("input", () => {
@@ -853,114 +1082,124 @@ function renderBrief() {
 
   const brief = state.session.caseBrief;
   const critique = state.session.recommendationCritique;
-  app.innerHTML = `
-    <section class="page stack">
-      <div class="section-head">
+  app.innerHTML = shellMarkup(
+    2,
+    `
+      <section class="cm-section cm-brief-head">
         <div>
-          <h1>Case Prep Brief</h1>
-          <p>Use this to pressure-test the recommendation before rehearsal.</p>
+          <span class="cm-badge cm-badge--blue">Step 2 · Brief</span>
+          <h1 class="cm-page-title">Pressure-test the <span>recommendation.</span></h1>
+          <p class="cm-page-lead">Use this as the written version of what the panel is about to ask you to defend.</p>
         </div>
-        <div class="action-row">
+        <div class="cm-head-actions">
           <button class="secondary-btn" id="editInputsBtn" type="button">Edit inputs</button>
-          <button class="primary-btn" id="startRehearsalBtn" type="button">Start Q&amp;A rehearsal</button>
+          <button class="primary-btn cm-button-lift" id="startRehearsalBtn" type="button">Start Q&amp;A</button>
         </div>
-      </div>
+      </section>
 
-      ${
-        brief.usesDefaultRubric
-          ? `<div class="disclaimer"><strong>General rubric used.</strong><span>No judging criteria were provided, so this brief uses a general case competition rubric.</span></div>`
-          : ""
-      }
-
-      <div class="meta-grid">
-        <div class="meta-box"><span>Questions</span><strong>5</strong></div>
-        <div class="meta-box"><span>Keywords</span><strong>${brief.keywords.length}</strong></div>
-        <div class="meta-box"><span>Risks</span><strong>${brief.risks.length}</strong></div>
-        <div class="meta-box"><span>Rubric</span><strong>${brief.usesDefaultRubric ? "General" : "Custom"}</strong></div>
-      </div>
-
-      <div class="grid two-col">
-        <div class="stack">
-          <section class="panel">
-            <h2>Problem Summary</h2>
+      <section class="cm-doc-layout">
+        <article class="cm-doc-card">
+          ${brief.usesDefaultRubric ? `<div class="cm-alert cm-alert--soft"><strong>General rubric used.</strong><span>No judging criteria were provided, so this brief uses a general case competition rubric.</span></div>` : ""}
+          <div class="cm-doc-section">
+            <span class="cm-doc-kicker">Situation</span>
+            <h2>Problem summary</h2>
             <p>${escapeHtml(brief.problemSummary)}</p>
-          </section>
-          <section class="panel">
-            <h2>Key Decision Required</h2>
+          </div>
+          <div class="cm-doc-section">
+            <span class="cm-doc-kicker">Decision</span>
+            <h2>Key decision required</h2>
             <p>${escapeHtml(brief.keyDecision)}</p>
-          </section>
-          <section class="panel">
-            <h2>Suggested Story Arc</h2>
-            ${listMarkup(brief.storyArc)}
-          </section>
-          <section class="panel">
-            <h2>Likely Difficult Judge Questions</h2>
-            ${listMarkup(brief.difficultQuestions, "warning")}
-          </section>
-        </div>
+          </div>
+          <div class="cm-doc-grid">
+            <section class="cm-doc-section">
+              <span class="cm-doc-kicker">Story arc</span>
+              <h3>Suggested sequence</h3>
+              ${listMarkup(brief.storyArc)}
+            </section>
+            <section class="cm-doc-section">
+              <span class="cm-doc-kicker">Pressure points</span>
+              <h3>Likely difficult questions</h3>
+              ${listMarkup(brief.difficultQuestions, "warning")}
+            </section>
+          </div>
+          <div class="cm-doc-grid">
+            <section class="cm-doc-section">
+              <span class="cm-doc-kicker">Criteria</span>
+              <h3>Likely judge priorities</h3>
+              ${listMarkup(brief.judgePriorities)}
+            </section>
+            <section class="cm-doc-section">
+              <span class="cm-doc-kicker">Signals</span>
+              <h3>Keywords to emphasize</h3>
+              <div class="cm-tag-row">${brief.keywords.map((item) => `<span class="cm-tag">${escapeHtml(item)}</span>`).join("")}</div>
+            </section>
+          </div>
+          <div class="cm-doc-grid">
+            <section class="cm-doc-section">
+              <span class="cm-doc-kicker">What holds</span>
+              <h3>Strengths</h3>
+              ${listMarkup(brief.strengths)}
+            </section>
+            <section class="cm-doc-section">
+              <span class="cm-doc-kicker">What breaks</span>
+              <h3>Gaps</h3>
+              ${listMarkup(brief.gaps, "warning")}
+            </section>
+          </div>
+          <div class="cm-doc-section">
+            <span class="cm-doc-kicker">Assumptions</span>
+            <h3>Assumptions to defend</h3>
+            ${listMarkup(brief.assumptions)}
+          </div>
+          <div class="cm-doc-section">
+            <span class="cm-doc-kicker">Mitigation</span>
+            <h3>Risks and mitigation ideas</h3>
+            <div class="cm-mini-grid">
+              ${brief.risks
+                .map(
+                  (item) => `
+                    <div class="cm-mini-card">
+                      <strong>${escapeHtml(item.risk)}</strong>
+                      <p>${escapeHtml(item.mitigation)}</p>
+                    </div>
+                  `
+                )
+                .join("")}
+            </div>
+          </div>
+        </article>
 
-        <div class="stack">
-          <section class="panel">
-            <h2>Likely Judge Priorities</h2>
-            ${listMarkup(brief.judgePriorities)}
+        <aside class="cm-sidebar">
+          <section class="cm-card">
+            <span class="cm-eyebrow">Session meta</span>
+            <div class="cm-stat-row">
+              <div><span>Questions</span><strong>5</strong></div>
+              <div><span>Keywords</span><strong>${brief.keywords.length}</strong></div>
+              <div><span>Risks</span><strong>${brief.risks.length}</strong></div>
+              <div><span>Rubric</span><strong>${brief.usesDefaultRubric ? "General" : "Custom"}</strong></div>
+            </div>
           </section>
-          <section class="panel">
-            <h2>Keywords to Emphasize</h2>
-            <div class="tag-row">${brief.keywords.map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("")}</div>
+
+          <section class="cm-card">
+            <span class="cm-eyebrow">Recommendation critique</span>
+            <div class="cm-critique-block">
+              <h3>Strengths</h3>
+              ${listMarkup(critique.strengths)}
+            </div>
+            <div class="cm-critique-block">
+              <h3>Improvement areas</h3>
+              ${listMarkup(critique.weaknesses, "warning")}
+            </div>
+            <div class="cm-critique-block">
+              <h3>Missing evidence</h3>
+              ${listMarkup(critique.missingEvidence, "coral")}
+            </div>
           </section>
-        </div>
-      </div>
-
-      <div class="grid three-col">
-        <section class="panel">
-          <h2>Strengths</h2>
-          ${listMarkup(brief.strengths)}
-        </section>
-        <section class="panel warn">
-          <h2>Gaps</h2>
-          ${listMarkup(brief.gaps, "warning")}
-        </section>
-        <section class="panel">
-          <h2>Assumptions to Defend</h2>
-          ${listMarkup(brief.assumptions)}
-        </section>
-      </div>
-
-      <section class="panel">
-        <h2>Risks and Mitigation Ideas</h2>
-        <div class="grid three-col">
-          ${brief.risks
-            .map(
-              (item) => `
-                <div class="score-card">
-                  <h3>${escapeHtml(item.risk)}</h3>
-                  <p class="hint">${escapeHtml(item.mitigation)}</p>
-                </div>
-              `
-            )
-            .join("")}
-        </div>
+        </aside>
       </section>
-
-      <section class="panel">
-        <h2>Recommendation Critique</h2>
-        <div class="grid three-col">
-          <div>
-            <h3>Strengths</h3>
-            ${listMarkup(critique.strengths)}
-          </div>
-          <div>
-            <h3>Improvement Areas</h3>
-            ${listMarkup(critique.weaknesses, "warning")}
-          </div>
-          <div>
-            <h3>Missing Evidence</h3>
-            ${listMarkup(critique.missingEvidence, "coral")}
-          </div>
-        </div>
-      </section>
-    </section>
-  `;
+    `,
+    "cm-brief"
+  );
 
   document.getElementById("editInputsBtn").addEventListener("click", () => go("setup"));
   document.getElementById("startRehearsalBtn").addEventListener("click", () => {
@@ -977,15 +1216,19 @@ function listMarkup(items, style = "") {
 }
 
 function renderEmpty(title, body, button, route) {
-  app.innerHTML = `
-    <section class="empty-state page">
-      <div class="panel stack">
-        <h1>${escapeHtml(title)}</h1>
-        <p class="lead">${escapeHtml(body)}</p>
-        <button class="primary-btn" id="emptyActionBtn" type="button">${escapeHtml(button)}</button>
-      </div>
-    </section>
-  `;
+  app.innerHTML = shellMarkup(
+    route === "setup" ? 1 : route === "brief" ? 2 : route === "rehearsal" ? 3 : 4,
+    `
+      <section class="cm-empty">
+        <div class="cm-card cm-empty-card">
+          <span class="cm-badge cm-badge--amber">Action needed</span>
+          <h1 class="cm-page-title">${escapeHtml(title)}</h1>
+          <p class="cm-page-lead">${escapeHtml(body)}</p>
+          <button class="primary-btn cm-button-lift" id="emptyActionBtn" type="button">${escapeHtml(button)}</button>
+        </div>
+      </section>
+    `
+  );
   document.getElementById("emptyActionBtn").addEventListener("click", () => go(route));
 }
 
@@ -1007,21 +1250,24 @@ function renderRehearsal() {
   const progress = currentRehearsalState();
 
   if (progress.index >= 5) {
-    app.innerHTML = `
-      <section class="page stack">
-        <div class="section-head">
+    app.innerHTML = shellMarkup(
+      3,
+      `
+        <section class="cm-section cm-qa-complete">
           <div>
-            <h1>Rehearsal Complete</h1>
-            <p>All five main judge-style questions have answers and adaptive follow-ups.</p>
+            <span class="cm-badge cm-badge--green">Step 3 · Rehearsal complete</span>
+            <h1 class="cm-page-title">Five answers down. Build the <span>report.</span></h1>
+            <p class="cm-page-lead">All five main judge-style questions have answers and adaptive follow-ups recorded.</p>
           </div>
-          <button class="primary-btn" id="generateReportBtn" type="button">${state.loading === "report" ? "Generating..." : "Generate final report"}</button>
-        </div>
-        <div class="panel">
-          <h2>Answer transcript</h2>
-          <div class="stack">${session.answers.map(answerTranscriptMarkup).join("")}</div>
-        </div>
-      </section>
-    `;
+          <button class="primary-btn cm-button-lift" id="generateReportBtn" type="button">${state.loading === "report" ? "Generating..." : "Generate final report"}</button>
+        </section>
+        <section class="cm-card">
+          <h3 class="cm-card-title">Answer transcript</h3>
+          <div class="cm-answer-stack">${session.answers.map(answerTranscriptMarkup).join("")}</div>
+        </section>
+      `,
+      "cm-rehearsal"
+    );
     document.getElementById("generateReportBtn").addEventListener("click", () => createReport());
     return;
   }
@@ -1040,58 +1286,74 @@ function renderRehearsal() {
     : `${question.rationale} Criterion tested: ${question.criterionTested}.`;
   const progressPercent = Math.round((progress.index / 5) * 100);
 
-  app.innerHTML = `
-    <section class="page">
-      <div class="section-head">
+  app.innerHTML = shellMarkup(
+    3,
+    `
+      <section class="cm-section cm-qa-head">
         <div>
-          <h1>Judge Q&amp;A Rehearsal</h1>
-          <p>Answer by typing. Microphone transcription and webcam preview are optional and typed mode always works.</p>
+          <span class="cm-badge cm-badge--lavender">Step 3 · Judge Q&amp;A</span>
+          <h1 class="cm-page-title">Rehearse the <span>panel.</span></h1>
+          <p class="cm-page-lead">Typed answers are the primary path. Microphone transcription and webcam preview are optional add-ons.</p>
         </div>
         <button class="secondary-btn" id="backToBriefBtn" type="button">Back to brief</button>
-      </div>
+      </section>
 
-      <div class="grid two-col">
-        <div class="panel question-card">
-          <div class="progress">
-            <strong>Question ${progress.index + 1} of 5 ${isFollowUp ? "follow-up" : "main question"}</strong>
+      <section class="cm-qa-layout">
+        <article class="cm-card cm-qa-card">
+          <div class="cm-qa-progress">
+            <div class="cm-progress-label">
+              <strong>Question ${progress.index + 1} of 5</strong>
+              <span>${isFollowUp ? "Follow-up" : "Main question"}</span>
+            </div>
+            <div class="cm-progress-dots">
+              ${Array.from({ length: 5 }, (_, index) => `<span class="${index < progress.index ? "done" : index === progress.index ? "active" : ""}"></span>`).join("")}
+            </div>
             <div class="progress-rail"><span style="width: ${progressPercent}%"></span></div>
           </div>
 
-          <div class="question-text">${escapeHtml(prompt)}</div>
-          <p class="rationale">${escapeHtml(helper)}</p>
+          <div class="cm-question-panel">
+            <span class="cm-eyebrow">${isFollowUp ? "Follow-up prompt" : "Judge prompt"}</span>
+            <div class="question-text">${escapeHtml(prompt)}</div>
+            <p class="rationale">${escapeHtml(helper)}</p>
+          </div>
 
-          <div class="field">
-            <label for="answerText">${isFollowUp ? "Follow-up answer" : "Your answer"}</label>
+          <label class="cm-field full">
+            <span>${isFollowUp ? "Follow-up answer" : "Your answer"}</span>
             <textarea class="large" id="answerText" placeholder="Type your answer here. Aim for answer first, evidence second, caveat third."></textarea>
-            <span class="hint" id="liveMetrics">Words: 0 | Filler words: 0 | Timing starts when the question appears.</span>
-          </div>
+            <small class="hint" id="liveMetrics">Words: 0 | Filler words: 0 | Timing starts when the question appears.</small>
+          </label>
 
-          <div class="action-row">
-            <button class="primary-btn" id="saveAnswerBtn" type="button">${isFollowUp ? "Save follow-up" : "Save answer and get follow-up"}</button>
-            <button class="secondary-btn" id="micBtn" type="button">Use microphone</button>
+          <div class="cm-form-actions">
+            <div class="cm-form-status">Practice feedback only. No emotion analysis, no body-language scoring, no official judging.</div>
+            <div class="cm-form-action-group">
+              <button class="secondary-btn" id="micBtn" type="button">Use microphone</button>
+              <button class="primary-btn cm-button-lift" id="saveAnswerBtn" type="button">${isFollowUp ? "Save follow-up" : "Save answer and get follow-up"}</button>
+            </div>
           </div>
-        </div>
+        </article>
 
-        <aside class="stack">
-          <div class="panel webcam-box">
-            <h2>Optional Webcam Preview</h2>
+        <aside class="cm-sidebar">
+          <section class="cm-card cm-webcam-card">
+            <span class="cm-eyebrow">Optional preview</span>
+            <h3>Camera and self-review</h3>
             <video id="webcamPreview" autoplay muted playsinline></video>
             <button class="secondary-btn" id="webcamBtn" type="button">Enable preview</button>
-            <p class="hint">Preview only. This MVP does not record video, infer emotion, assess personality, or judge protected traits.</p>
-          </div>
+            <p>Preview only. This MVP does not record video, infer emotion, assess personality, or judge protected traits.</p>
+          </section>
 
-          <div class="panel">
-            <h2>Completed answers</h2>
+          <section class="cm-card">
+            <span class="cm-eyebrow">Completed answers</span>
             ${
               session.answers.length
-                ? `<div class="stack">${session.answers.map(answerTranscriptMarkup).join("")}</div>`
-                : `<p class="hint">Your transcripts will appear here as you practice.</p>`
+                ? `<div class="cm-answer-stack">${session.answers.map(answerTranscriptMarkup).join("")}</div>`
+                : `<p class="cm-muted-copy">Your transcripts will appear here as you practice.</p>`
             }
-          </div>
+          </section>
         </aside>
-      </div>
-    </section>
-  `;
+      </section>
+    `,
+    "cm-rehearsal"
+  );
 
   document.getElementById("backToBriefBtn").addEventListener("click", () => go("brief"));
   document.getElementById("answerText").addEventListener("input", updateLiveMetrics);
@@ -1103,7 +1365,7 @@ function renderRehearsal() {
 
 function answerTranscriptMarkup(answer) {
   return `
-    <div class="score-card">
+    <div class="cm-answer-card">
       <h3>Q${answer.questionNumber}: ${escapeHtml(answer.questionText)}</h3>
       <p>${escapeHtml(compactSentence(answer.answerText, "No main answer recorded."))}</p>
       ${
@@ -1114,11 +1376,11 @@ function answerTranscriptMarkup(answer) {
       }
       ${
         answer.metrics
-          ? `<div class="metric-strip">
-              <div class="metric"><strong>${answer.metrics.wordCount}</strong><span>words</span></div>
-              <div class="metric"><strong>${answer.metrics.fillerWordCount}</strong><span>fillers</span></div>
-              <div class="metric"><strong>${answer.metrics.durationSeconds}s</strong><span>duration</span></div>
-              <div class="metric"><strong>${answer.metrics.approximateWordsPerMinute}</strong><span>wpm</span></div>
+          ? `<div class="cm-answer-metrics">
+              <div><strong>${answer.metrics.wordCount}</strong><span>words</span></div>
+              <div><strong>${answer.metrics.fillerWordCount}</strong><span>fillers</span></div>
+              <div><strong>${answer.metrics.durationSeconds}s</strong><span>duration</span></div>
+              <div><strong>${answer.metrics.approximateWordsPerMinute}</strong><span>wpm</span></div>
             </div>`
           : ""
       }
@@ -1264,105 +1526,176 @@ function renderReport() {
 
   const report = state.session.finalReport;
   const scores = report.scores;
-  app.innerHTML = `
-    <section class="page stack">
-      <div class="section-head">
-        <div>
-          <h1>Final Readiness Report</h1>
-          <p>Practice readiness based on the pasted case materials, recommendation critique, and Q&amp;A transcript.</p>
-        </div>
-        <div class="action-row">
-          <button class="secondary-btn" id="copyReportBtn" type="button">Copy report</button>
-          <button class="secondary-btn" id="exportReportBtn" type="button">Export JSON</button>
-          <button class="primary-btn" id="restartBtn" type="button">Restart with same inputs</button>
-        </div>
-      </div>
-
-      <div class="disclaimer">
-        <strong>Not official judging.</strong>
-        <span>Scores are practice signals only. They do not predict judge decisions, rankings, confidence, personality, or competition outcomes.</span>
-      </div>
-
-      <div class="grid three-col">
-        ${scoreMarkup("Overall readiness", scores.overallReadinessScore)}
-        ${scoreMarkup("Recommendation strength", scores.recommendationStrengthScore)}
-        ${scoreMarkup("Judge Q&A readiness", scores.qnaReadinessScore)}
-        ${scoreMarkup("Presentation clarity", scores.presentationClarityScore)}
-      </div>
-
-      <div class="grid two-col">
-        <section class="panel">
-          <h2>Strengths</h2>
-          ${listMarkup(report.strengths)}
-        </section>
-        <section class="panel warn">
-          <h2>Weaknesses</h2>
-          ${listMarkup(report.weaknesses, "warning")}
-        </section>
-      </div>
-
-      <div class="grid three-col">
-        <section class="panel">
-          <h2>Missed or Weak Criteria</h2>
-          ${listMarkup(report.missedCriteria, "warning")}
-        </section>
-        <section class="panel">
-          <h2>Weak Assumptions</h2>
-          ${listMarkup(report.weakAssumptions)}
-        </section>
-        <section class="panel">
-          <h2>Missing Metrics or Evidence</h2>
-          ${listMarkup(report.missingMetricsOrEvidence, "coral")}
-        </section>
-      </div>
-
-      <section class="panel">
-        <h2>Best and Weakest Answers</h2>
-        <div class="grid two-col">
-          <div class="score-card">
-            <h3>Best answer: Question ${report.bestAnswer.questionNumber}</h3>
-            <p>${escapeHtml(report.bestAnswer.summary)}</p>
-            <strong>${escapeHtml(report.bestAnswer.score || "n/a")}</strong>
+  app.innerHTML = shellMarkup(
+    4,
+    `
+      <section class="cm-report-hero">
+        <div class="cm-report-cover">
+          <div class="cm-report-cover-top">
+            <div>
+              <span class="cm-badge cm-badge--glass">Step 4 · Readiness report</span>
+              <span class="cm-report-session">Session ${escapeHtml(initials(state.session.companyName || "CM"))}-${state.session.id.slice(0, 4)}</span>
+            </div>
+            <div class="cm-report-actions">
+              <button class="secondary-btn" id="copyReportBtn" type="button">Copy report</button>
+              <button class="secondary-btn" id="exportReportBtn" type="button">Export JSON</button>
+              <button class="primary-btn cm-button-lift" id="restartBtn" type="button">Restart with same inputs</button>
+            </div>
           </div>
-          <div class="score-card">
-            <h3>Weakest answer: Question ${report.weakestAnswer.questionNumber}</h3>
-            <p>${escapeHtml(report.weakestAnswer.summary)}</p>
-            <strong>${escapeHtml(report.weakestAnswer.score || "n/a")}</strong>
-          </div>
-        </div>
-      </section>
 
-      <section class="panel">
-        <h2>Suggested Improved Answer</h2>
-        ${report.improvedAnswers
-          .map(
-            (item) => `
-              <div class="score-card">
-                <h3>${escapeHtml(item.question)}</h3>
-                <p>${escapeHtml(item.suggestion)}</p>
+          <div class="cm-report-cover-grid">
+            <div>
+              <span class="cm-report-kicker">${escapeHtml(state.session.companyName || "Untitled case")} · practice transcript</span>
+              <h1>You're <em>almost</em> ready for the panel.</h1>
+              <p>
+                Five of your answers held up well enough to rehearse live.
+                The recommendation is structurally stronger than the weaker
+                evidence points. Use this report as practice guidance only,
+                not official judging.
+              </p>
+              <div class="cm-report-chip-row">
+                <span>Recommendation defensible</span>
+                <span>Q&amp;A transcript complete</span>
+                <span>No winner prediction</span>
               </div>
-            `
-          )
-          .join("")}
-      </section>
+            </div>
 
-      <section class="panel">
-        <h2>Recommended Next Practice Steps</h2>
-        ${listMarkup(report.nextPracticePlan)}
-      </section>
-
-      <section class="panel">
-        <h2>Delivery Feedback</h2>
-        <div class="metric-strip">
-          <div class="metric"><strong>${report.deliveryMetrics.totalFillerWords}</strong><span>total filler words</span></div>
-          <div class="metric"><strong>${report.deliveryMetrics.averageWordsPerMinute}</strong><span>avg typed WPM</span></div>
-          <div class="metric"><strong>${scores.presentationClarityScore}</strong><span>clarity score</span></div>
-          <div class="metric"><strong>Typed</strong><span>fallback mode</span></div>
+            <div class="cm-report-meta">
+              <div class="cm-report-meta-card">
+                <div><span>Overall</span><strong>${scores.overallReadinessScore}</strong></div>
+                <div><span>Q&amp;A</span><strong>${scores.qnaReadinessScore}</strong></div>
+                <div><span>Clarity</span><strong>${scores.presentationClarityScore}</strong></div>
+                <div><span>Answers</span><strong>${state.session.answers.length}/5</strong></div>
+              </div>
+              <div class="cm-report-pillar-row">
+                <article><span>Strengths</span><strong>${report.strengths.length}</strong></article>
+                <article><span>Risks</span><strong>${report.weaknesses.length}</strong></article>
+                <article><span>Next reps</span><strong>${report.nextPracticePlan.length}</strong></article>
+              </div>
+            </div>
+          </div>
         </div>
-        <p class="footer-note">${escapeHtml(report.deliveryMetrics.note)}</p>
       </section>
-    </section>
-  `;
+
+      <section class="cm-section">
+        <div class="cm-section-head">
+          <div>
+            <span class="cm-eyebrow">How you read by area</span>
+            <h2>Where you're solid, where the panel will lean in.</h2>
+          </div>
+          <p class="cm-section-note">Categorical reads only. We don't predict rankings, confidence, personality, or competition outcomes.</p>
+        </div>
+        <div class="cm-score-grid">
+          ${[
+            ["Overall readiness", scores.overallReadinessScore],
+            ["Recommendation strength", scores.recommendationStrengthScore],
+            ["Judge Q&A readiness", scores.qnaReadinessScore],
+            ["Presentation clarity", scores.presentationClarityScore]
+          ]
+            .map(
+              ([label, value]) => `
+                <article class="cm-score-card">
+                  <div class="cm-score-head">
+                    <span>${label}</span>
+                    <strong>${scoreLabel(value)}</strong>
+                  </div>
+                  <div class="cm-score-value">${value}<small>/100</small></div>
+                  <div class="cm-score-track ${scoreTone(value)}"><span style="width: ${value}%"></span></div>
+                </article>
+              `
+            )
+            .join("")}
+        </div>
+      </section>
+
+      <section class="cm-section cm-report-columns">
+        <article class="cm-card">
+          <span class="cm-eyebrow">Strengths</span>
+          <h3>Where the panel won't press</h3>
+          ${listMarkup(report.strengths)}
+        </article>
+        <article class="cm-card">
+          <span class="cm-eyebrow">Risks</span>
+          <h3>Where they will press</h3>
+          ${listMarkup(report.weaknesses, "warning")}
+        </article>
+        <article class="cm-card">
+          <span class="cm-eyebrow">Next reps</span>
+          <h3>What to rehearse next</h3>
+          ${listMarkup(report.nextPracticePlan)}
+        </article>
+      </section>
+
+      <section class="cm-section">
+        <div class="cm-report-detail-grid">
+          <article class="cm-card">
+            <span class="cm-eyebrow">Criteria to shore up</span>
+            <h3>Missed or weak criteria</h3>
+            ${listMarkup(report.missedCriteria, "warning")}
+          </article>
+          <article class="cm-card">
+            <span class="cm-eyebrow">Assumptions</span>
+            <h3>Weak assumptions</h3>
+            ${listMarkup(report.weakAssumptions)}
+          </article>
+          <article class="cm-card">
+            <span class="cm-eyebrow">Evidence</span>
+            <h3>Missing metrics or proof</h3>
+            ${listMarkup(report.missingMetricsOrEvidence, "coral")}
+          </article>
+        </div>
+      </section>
+
+      <section class="cm-section">
+        <div class="cm-report-detail-grid">
+          <article class="cm-card">
+            <span class="cm-eyebrow">Best answer</span>
+            <h3>Question ${report.bestAnswer.questionNumber}</h3>
+            <p>${escapeHtml(report.bestAnswer.summary)}</p>
+            <strong class="cm-inline-score">${escapeHtml(report.bestAnswer.score || "n/a")}</strong>
+          </article>
+          <article class="cm-card">
+            <span class="cm-eyebrow">Weakest answer</span>
+            <h3>Question ${report.weakestAnswer.questionNumber}</h3>
+            <p>${escapeHtml(report.weakestAnswer.summary)}</p>
+            <strong class="cm-inline-score">${escapeHtml(report.weakestAnswer.score || "n/a")}</strong>
+          </article>
+        </div>
+      </section>
+
+      <section class="cm-section">
+        <article class="cm-card">
+          <span class="cm-eyebrow">Suggested improved answer</span>
+          <div class="cm-answer-stack">
+            ${report.improvedAnswers
+              .map(
+                (item) => `
+                  <div class="cm-answer-card">
+                    <h3>${escapeHtml(item.question)}</h3>
+                    <p>${escapeHtml(item.suggestion)}</p>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        </article>
+      </section>
+
+      <section class="cm-section">
+        <article class="cm-card">
+          <span class="cm-eyebrow">Delivery feedback</span>
+          <div class="cm-answer-metrics">
+            <div><strong>${report.deliveryMetrics.totalFillerWords}</strong><span>total filler words</span></div>
+            <div><strong>${report.deliveryMetrics.averageWordsPerMinute}</strong><span>avg typed WPM</span></div>
+            <div><strong>${scores.presentationClarityScore}</strong><span>clarity score</span></div>
+            <div><strong>Typed</strong><span>fallback mode</span></div>
+          </div>
+          <p class="cm-muted-copy">${escapeHtml(report.deliveryMetrics.note)}</p>
+        </article>
+      </section>
+    `,
+    "cm-report"
+  );
 
   document.getElementById("copyReportBtn").addEventListener("click", copyReport);
   document.getElementById("exportReportBtn").addEventListener("click", exportReport);
@@ -1443,7 +1776,7 @@ function exportReport() {
   showToast("Report exported.");
 }
 
-document.getElementById("clearSessionBtn").addEventListener("click", () => {
+function clearSession() {
   if (state.webcamStream) {
     state.webcamStream.getTracks().forEach((track) => track.stop());
     state.webcamStream = null;
@@ -1455,7 +1788,7 @@ document.getElementById("clearSessionBtn").addEventListener("click", () => {
   showToast("Session cleared.");
   go("home");
   render();
-});
+}
 
 window.addEventListener("hashchange", render);
 render();
