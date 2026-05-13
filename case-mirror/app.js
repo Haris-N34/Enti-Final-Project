@@ -164,6 +164,12 @@ function compactSentence(text, fallback) {
   return first.length > 210 ? `${first.slice(0, 207)}...` : first;
 }
 
+function capitalizeFirst(text) {
+  const value = String(text || "").trim();
+  if (!value) return "";
+  return value[0].toUpperCase() + value.slice(1);
+}
+
 function extractKeywords(text, limit = 8) {
   const stop = new Set([
     "the",
@@ -200,7 +206,8 @@ function extractKeywords(text, limit = 8) {
     "through",
     "during",
     "within",
-    "without"
+    "without",
+    "whether"
   ]);
 
   const counts = new Map();
@@ -236,6 +243,15 @@ function findDecisionLanguage(prompt) {
   return decisionSentence;
 }
 
+function formatPriorityFocus(keyword, company) {
+  const blocked = new Set(["expand", "student", "subscription", "ecoride"]);
+  const cleanKeyword = String(keyword || "").trim().toLowerCase();
+  if (!cleanKeyword || blocked.has(cleanKeyword)) {
+    return capitalizeFirst(company || "the case");
+  }
+  return capitalizeFirst(keyword);
+}
+
 function generateBrief(session) {
   const company = session.companyName || "the client";
   const keywords = extractKeywords(
@@ -260,7 +276,7 @@ function generateBrief(session) {
     problemSummary,
     keyDecision: findDecisionLanguage(session.casePrompt),
     judgePriorities: rubric.slice(0, 6).map((criterion, index) => {
-      const keyword = keywords[index] || "evidence";
+      const keyword = formatPriorityFocus(keywords[index] || "evidence", company);
       return `${criterion}: show how the recommendation handles ${keyword} with specific tradeoffs.`;
     }),
     recommendationSnapshot: recommendationStart,
@@ -750,14 +766,13 @@ function renderHome() {
           <div class="cm-orb cm-orb--blue"></div>
           <div class="cm-media-card">
             <div class="cm-live-chip">Live brief</div>
-            <div class="cm-placeholder cm-placeholder--blue" aria-label="Case brief preview">
-              <span>[ Case brief preview ]</span>
-              <small>Generated brief on a desk / over-the-shoulder team prep</small>
+            <div class="cm-placeholder cm-placeholder--blue cm-placeholder--image-frame" aria-label="Case brief preview image">
+              <img class="cm-placeholder-image" src="./assets/images/hero-case-brief-preview.jpg" alt="Case brief preview illustration" />
             </div>
             <div class="cm-floating-metric">
               <div class="cm-metric-head">
-                <span>Readiness</span>
-                <strong>68.5%</strong>
+                <span>Find out how ready you are</span>
+                <strong>Ready %</strong>
               </div>
               <div class="cm-sparkbars">
                 <span style="height: 14px"></span>
@@ -816,7 +831,9 @@ function renderHome() {
             <span class="cm-badge cm-badge--teal">Generated</span>
             <h3>Parallel Brief</h3>
             <p>A brief shaped like the case room: situation, core decision, likely pressure points, and defensible questions.</p>
-            <div class="cm-placeholder cm-placeholder--soft"><span>[ Brief mock ]</span></div>
+            <div class="cm-placeholder cm-placeholder--soft cm-placeholder--image-frame" aria-label="Parallel brief preview image">
+              <img class="cm-placeholder-image" src="./assets/images/parallel-brief-preview.png" alt="Parallel brief preview illustration" />
+            </div>
             <div class="cm-card-foot"><span>01 / 03</span><a href="#/brief">See example</a></div>
           </article>
 
@@ -827,18 +844,20 @@ function renderHome() {
             </div>
             <h3>Judge Q&amp;A</h3>
             <p>Typed answers first. Mic and camera are optional, never required. The panel voice stays grounded in the case you pasted.</p>
-            <div class="cm-placeholder cm-placeholder--lavender">
-              <span>[ Q&amp;A transcript ]</span>
-              <small>Judge prompt + your answer + practice note</small>
+            <div class="cm-placeholder cm-placeholder--lavender cm-placeholder--image-frame" aria-label="Judge Q and A preview image">
+              <img class="cm-placeholder-image" src="./assets/images/judge-qa-preview.png" alt="Judge Q and A preview illustration" />
             </div>
             <a class="cm-blue-link" href="#/rehearsal">See sample Q&amp;A <span>↗</span></a>
+            <div class="cm-card-foot"><span>02 / 03</span></div>
           </article>
 
           <article class="cm-feature-card">
             <span class="cm-badge cm-badge--green">Output</span>
             <h3>Readiness Report</h3>
             <p>Strengths, risks, and the answers you still owe. Written feedback, not official judging and not winner prediction.</p>
-            <div class="cm-placeholder cm-placeholder--green"><span>[ Report mock ]</span></div>
+            <div class="cm-placeholder cm-placeholder--green cm-placeholder--image-frame" aria-label="Readiness report preview image">
+              <img class="cm-placeholder-image" src="./assets/images/readiness-report-preview.jpg" alt="Readiness report preview illustration" />
+            </div>
             <div class="cm-card-foot"><span>03 / 03</span><a href="#/report">Sample report</a></div>
           </article>
         </div>
@@ -849,9 +868,9 @@ function renderHome() {
           <span class="cm-badge cm-badge--teal">For teams</span>
           <h2>Rehearsing the<br />case competition.</h2>
           <p>
-            We help university case teams walk into the room having already
-            practiced the questions they will face — calmly, in writing, before
-            the panel opens its mouth.
+            We help university case teams walk into the presentation room more
+            prepared, more polished, and more confident in the recommendation
+            they are about to deliver to the panel.
           </p>
           <ul class="cm-check-list">
             <li>Prompt-aligned practice</li>
@@ -864,12 +883,11 @@ function renderHome() {
           <div class="cm-stat-stack">
             <article class="cm-stat-card cm-stat-card--teal"><strong>1,800+</strong><span>rehearsals run</span></article>
             <article class="cm-stat-card cm-stat-card--blue"><strong>5</strong><span>judge questions per run</span></article>
-            <article class="cm-stat-card cm-stat-card--green"><strong>0</strong><span>body-language scoring</span></article>
+            <article class="cm-stat-card cm-stat-card--green"><strong>Score</strong><span>body-language scoring</span></article>
           </div>
           <article class="cm-dark-panel">
-            <div class="cm-placeholder cm-placeholder--dark">
-              <span>[ Team rehearsal image ]</span>
-              <small>Presentation practice in front of a panel</small>
+            <div class="cm-placeholder cm-placeholder--dark cm-placeholder--image-frame" aria-label="Team rehearsal preview image">
+              <img class="cm-placeholder-image" src="./assets/images/team-rehearsal-preview.png" alt="Team rehearsal preview illustration" />
             </div>
             <div class="cm-dark-panel-copy">
               <strong>Practice feedback only</strong>
@@ -1001,9 +1019,8 @@ function renderSetup() {
           </section>
 
           <section class="cm-card">
-            <div class="cm-placeholder cm-placeholder--teal cm-placeholder--short">
-              <span>[ Live brief preview ]</span>
-              <small>Updates as you fill the form</small>
+            <div class="cm-placeholder cm-placeholder--teal cm-placeholder--short cm-placeholder--image-frame" aria-label="Live brief preview image">
+              <img class="cm-placeholder-image" src="./assets/images/live-brief-preview.png" alt="Live brief preview illustration" />
             </div>
             <div class="cm-note-stack">
               <strong>Academic integrity note</strong>
@@ -1327,7 +1344,7 @@ function renderRehearsal() {
             <div class="cm-form-status">Practice feedback only. No emotion analysis, no body-language scoring, no official judging.</div>
             <div class="cm-form-action-group">
               <button class="secondary-btn" id="micBtn" type="button">Use microphone</button>
-              <button class="primary-btn cm-button-lift" id="saveAnswerBtn" type="button">${isFollowUp ? "Save follow-up" : "Save answer and get follow-up"}</button>
+              <button class="primary-btn cm-button-lift cm-cta-qa" id="saveAnswerBtn" type="button">${isFollowUp ? "Save follow-up" : "Save and continue"}</button>
             </div>
           </div>
         </article>
