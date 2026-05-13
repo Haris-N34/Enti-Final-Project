@@ -234,7 +234,7 @@ def _grade_prompt(payload: LiveGradeRequest) -> str:
     return f"""
 Return JSON only.
 Grade this live case competition answer using only the supplied question, answer, case prompt, and slide text.
-Use the supplied delivery/body metrics as observable signals. Do not infer emotion, personality, protected traits, honesty, leadership potential, official judge decisions, or winner likelihood.
+Use the supplied delivery/body metrics as observable signals. Do not infer emotion, personality, protected traits, honesty, confidence, nervousness, authority, professionalism, leadership potential, official judge decisions, or winner likelihood.
 Fields:
 content_score: integer 0-100
 clarity_score: integer 0-100
@@ -423,7 +423,18 @@ def _score(value: object, fallback: int) -> int:
 
 def _assert_live_safety(result: LiveGradeResponse) -> None:
     text = json.dumps(result.model_dump()).lower()
-    banned = ["looked nervous", "personality", "protected trait", "will win", "winner"]
+    banned = [
+        "looked nervous",
+        "nervous",
+        "personality",
+        "confidence",
+        "authority",
+        "professionalism",
+        "unprofessional",
+        "protected trait",
+        "will win",
+        "winner",
+    ]
     for phrase in banned:
         if phrase in text:
             raise ValueError(f"Unsafe live feedback language detected: {phrase}")
