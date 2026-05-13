@@ -1,0 +1,2 @@
+"""CaseCoach backend package."""
+

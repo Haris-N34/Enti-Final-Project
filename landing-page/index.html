@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arash's Posters — Premium Digital Art Downloads</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Inter:wght@300;400;500;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cream:      #f7f2e8;
+      --parchment:  #ede8d8;
+      --green-dark: #1e3a1e;
+      --green-mid:  #2d5a27;
+      --orange:     #c4621f;
+      --orange-lt:  #e07a3a;
+      --gold:       #c9a040;
+      --text:       #2a2a1e;
+      --muted:      #6b6454;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── NAV ─────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--green-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 48px;
+      box-shadow: 0 2px 24px rgba(0,0,0,0.35);
+    }
+
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--cream);
+      letter-spacing: 0.04em;
+    }
+
+    .nav-logo span { color: var(--gold); }
+
+    .nav-cta {
+      background: var(--orange);
+      color: #fff;
+      text-decoration: none;
+      padding: 10px 26px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: background 0.2s;
+    }
+
+    .nav-cta:hover { background: var(--orange-lt); }
+
+    /* ── HERO ─────────────────────────────────────── */
+    .hero {
+      position: relative;
+      height: 92vh;
+      min-height: 560px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        160deg,
+        rgba(20, 50, 20, 0.65) 0%,
+        rgba(20, 50, 20, 0.30) 50%,
+        rgba(10, 20, 10, 0.75) 100%
+      );
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 700px;
+      padding: 0 24px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--gold);
+      border: 1px solid var(--gold);
+      padding: 7px 18px;
+      border-radius: 2px;
+      margin-bottom: 28px;
+    }
+
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(44px, 7.5vw, 86px);
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.04;
+      margin-bottom: 22px;
+      text-shadow: 0 3px 24px rgba(0,0,0,0.45);
+    }
+
+    .hero p {
+      font-size: 18px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.86);
+      margin-bottom: 44px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .btn-hero {
+      display: inline-block;
+      background: var(--orange);
+      color: #fff;
+      text-decoration: none;
+      padding: 18px 48px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 8px 32px rgba(196, 98, 31, 0.45);
+    }
+
+    .btn-hero:hover {
+      background: var(--orange-lt);
+      transform: translateY(-3px);
+      box-shadow: 0 14px 40px rgba(196, 98, 31, 0.55);
+    }
+
+    /* ── VALUE STRIP ─────────────────────────────── */
+    .value-strip {
+      background: var(--parchment);
+      border-top: 2px solid var(--gold);
+      border-bottom: 2px solid var(--gold);
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .value-item {
+      flex: 1;
+      min-width: 150px;
+      padding: 24px 32px;
+      text-align: center;
+      border-right: 1px solid rgba(0,0,0,0.09);
+    }
+
+    .value-item:last-child { border-right: none; }
+
+    .v-icon { font-size: 24px; margin-bottom: 8px; }
+
+    .value-item strong {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--green-dark);
+      margin-bottom: 2px;
+    }
+
+    .value-item span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── PRODUCTS ─────────────────────────────────── */
+    .products {
+      padding: 100px 40px;
+      max-width: 1240px;
+      margin: 0 auto;
+    }
+
+    .section-head {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 14px;
+    }
+
+    .section-head h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 700;
+      color: var(--green-dark);
+      line-height: 1.12;
+    }
+
+    .section-head p {
+      margin-top: 16px;
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+      gap: 36px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      transition: transform 0.28s ease, box-shadow 0.28s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 56px rgba(0,0,0,0.14);
+    }
+
+    .card-img {
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+    }
+
+    .card-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.45s ease;
+      display: block;
+    }
+
+    .card:hover .card-img img { transform: scale(1.05); }
+
+    .card-body {
+      padding: 22px 22px 26px;
+    }
+
+    .card-tag {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--orange);
+      margin-bottom: 8px;
+    }
+
+    .card-body h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--green-dark);
+      margin-bottom: 10px;
+      line-height: 1.2;
+    }
+
+    .card-body p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    .btn-card {
+      display: block;
+      background: var(--green-dark);
+      color: #fff;
+      text-decoration: none;
+      text-align: center;
+      padding: 13px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: background 0.2s;
+    }
+
+    .btn-card:hover { background: var(--green-mid); }
+
+    /* ── CTA BANNER ──────────────────────────────── */
+    .cta-banner {
+      background: var(--green-dark);
+      padding: 96px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* decorative rings */
+    .cta-banner::before,
+    .cta-banner::after {
+      content: '';
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(201, 160, 64, 0.15);
+    }
+
+    .cta-banner::before {
+      width: 600px; height: 600px;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .cta-banner::after {
+      width: 900px; height: 900px;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .cta-inner { position: relative; z-index: 1; }
+
+    .cta-banner .section-label { color: var(--gold); margin-bottom: 14px; }
+
+    .cta-banner h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(30px, 4.5vw, 52px);
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 18px;
+    }
+
+    .cta-banner p {
+      color: rgba(255,255,255,0.68);
+      font-size: 16px;
+      max-width: 440px;
+      margin: 0 auto 40px;
+    }
+
+    /* ── FOOTER ──────────────────────────────────── */
+    footer {
+      background: #111a0f;
+      padding: 36px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--cream);
+    }
+
+    .footer-logo span { color: var(--gold); }
+
+    footer small {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+
+    footer a {
+      font-size: 12px;
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    /* ── RESPONSIVE ──────────────────────────────── */
+    @media (max-width: 640px) {
+      nav { padding: 14px 20px; }
+      .products { padding: 64px 20px; }
+      .value-item { padding: 18px 16px; min-width: 140px; }
+      .cta-banner { padding: 72px 24px; }
+      footer { padding: 28px 20px; flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── NAV ── -->
+  <nav>
+    <div class="nav-logo">Arash's <span>Posters</span></div>
+    <a href="https://arashsposters64686.store.link/category/abstract-art"
+       class="nav-cta" target="_blank" rel="noopener">Shop Now</a>
+  </nav>
+
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <img class="hero-bg" src="1.png" alt="Arash's Posters collection on display" />
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <div class="eyebrow">Premium Digital Downloads</div>
+      <h1>Art That Tells&nbsp;a&nbsp;Story</h1>
+      <p>Instant-download vintage travel posters. Print at home or any print shop, any size, any time.</p>
+      <a href="https://arashsposters64686.store.link/category/abstract-art"
+         class="btn-hero" target="_blank" rel="noopener">Browse the Collection</a>
+    </div>
+  </section>
+
+  <!-- ── VALUE STRIP ── -->
+  <div class="value-strip">
+    <div class="value-item">
+      <div class="v-icon">⚡</div>
+      <strong>Instant Download</strong>
+      <span>Files delivered immediately</span>
+    </div>
+    <div class="value-item">
+      <div class="v-icon">🖨️</div>
+      <strong>Print Any Size</strong>
+      <span>High-res, print anywhere</span>
+    </div>
+    <div class="value-item">
+      <div class="v-icon">🎨</div>
+      <strong>Original Art</strong>
+      <span>Unique vintage designs</span>
+    </div>
+    <div class="value-item">
+      <div class="v-icon">🌎</div>
+      <strong>No Shipping</strong>
+      <span>Digital — worldwide, instantly</span>
+    </div>
+  </div>
+
+  <!-- ── PRODUCTS ── -->
+  <section class="products">
+    <div class="section-head">
+      <p class="section-label">Featured Prints</p>
+      <h2>Explore the Collection</h2>
+      <p>Vintage travel posters inspired by America's most breathtaking landscapes.</p>
+    </div>
+
+    <div class="grid">
+
+      <div class="card">
+        <div class="card-img">
+          <img src="2.png" alt="Explore the Pacific Northwest poster" />
+        </div>
+        <div class="card-body">
+          <p class="card-tag">Travel Poster</p>
+          <h3>Pacific Northwest</h3>
+          <p>Mountain rivers, ancient forests, and endless skies — a classic WPA-style art print.</p>
+          <a href="https://arashsposters64686.store.link/category/abstract-art"
+             class="btn-card" target="_blank" rel="noopener">Download Now</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img">
+          <img src="3.png" alt="Zion National Park — Coral Edition" />
+        </div>
+        <div class="card-body">
+          <p class="card-tag">National Park</p>
+          <h3>Zion — Coral Edition</h3>
+          <p>Majestic sandstone cliffs in warm coral light. A bold, striking statement for any room.</p>
+          <a href="https://arashsposters64686.store.link/category/abstract-art"
+             class="btn-card" target="_blank" rel="noopener">Download Now</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img">
+          <img src="4.png" alt="Zion National Park — Sand Edition" />
+        </div>
+        <div class="card-body">
+          <p class="card-tag">National Park</p>
+          <h3>Zion — Sand Edition</h3>
+          <p>The Narrows in warm golden tones — understated, elegant, and timeless.</p>
+          <a href="https://arashsposters64686.store.link/category/abstract-art"
+             class="btn-card" target="_blank" rel="noopener">Download Now</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-img">
+          <img src="5.png" alt="Zion National Park — Sky Edition" />
+        </div>
+        <div class="card-body">
+          <p class="card-tag">National Park</p>
+          <h3>Zion — Sky Edition</h3>
+          <p>Crisp canyon air and open blue skies — perfect for a modern, airy aesthetic.</p>
+          <a href="https://arashsposters64686.store.link/category/abstract-art"
+             class="btn-card" target="_blank" rel="noopener">Download Now</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── CTA BANNER ── -->
+  <section class="cta-banner">
+    <div class="cta-inner">
+      <p class="section-label">Ready to Decorate?</p>
+      <h2>Download &amp; Print Today</h2>
+      <p>No shipping. No waiting. Just beautiful art, instantly in your hands.</p>
+      <a href="https://arashsposters64686.store.link/category/abstract-art"
+         class="btn-hero" target="_blank" rel="noopener">Shop the Full Collection</a>
+    </div>
+  </section>
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <div class="footer-logo">Arash's <span>Posters</span></div>
+    <small>© 2026 Arash's Posters. All rights reserved.</small>
+    <a href="https://arashsposters64686.store.link/category/abstract-art"
+       target="_blank" rel="noopener">Visit the Store →</a>
+  </footer>
+
+</body>
+</html>

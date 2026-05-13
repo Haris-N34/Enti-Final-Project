@@ -1,0 +1,36 @@
+[project]
+name = "casecoach-backend"
+version = "0.1.0"
+description = "Backend MVP for Case Mirror presentation video analysis."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.115.0",
+  "httpx>=0.27.0",
+  "pydantic>=2.8.0",
+  "pydantic-settings>=2.4.0",
+  "python-multipart>=0.0.9",
+  "uvicorn[standard]>=0.30.0",
+]
+
+[project.optional-dependencies]
+asr = [
+  "faster-whisper>=1.0.0",
+]
+slides = [
+  "PyMuPDF>=1.24.0",
+]
+test = [
+  "pytest>=8.3.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]

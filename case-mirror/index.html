@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Case Mirror</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#/">
+          <span class="brand-mark">CM</span>
+          <span>
+            <strong>Case Mirror</strong>
+            <small>Competition prep</small>
+          </span>
+        </a>
+
+        <nav class="nav" aria-label="Main navigation">
+          <a data-nav="home" href="#/">Home</a>
+          <a data-nav="setup" href="#/setup">Setup</a>
+          <a data-nav="brief" href="#/brief">Brief</a>
+          <a data-nav="rehearsal" href="#/rehearsal">Q&amp;A</a>
+          <a data-nav="report" href="#/report">Report</a>
+        </nav>
+
+        <button class="ghost-btn" id="clearSessionBtn" type="button">Clear session</button>
+      </header>
+
+      <main id="app" tabindex="-1"></main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
