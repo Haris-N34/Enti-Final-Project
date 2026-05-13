@@ -115,6 +115,35 @@ class DeliveryMetrics(BaseModel):
     observable_note: str = "Metrics are computed from transcript timing and text."
 
 
+class BodyFrameObservation(BaseModel):
+    timestamp: float
+    pose_visible: bool = False
+    shoulder_tilt_deg: float | None = None
+    torso_lean_deg: float | None = None
+    shoulder_center_motion: float | None = None
+    wrist_motion: float | None = None
+    hands_visible: bool | None = None
+    landmark_confidence: float | None = None
+
+
+class BodyMetrics(BaseModel):
+    provider: str = "unavailable"
+    sampled_frame_count: int = 0
+    analyzed_frame_count: int = 0
+    pose_visible_pct: float | None = None
+    posture_stability: float | None = None
+    avg_shoulder_tilt_deg: float | None = None
+    avg_torso_lean_deg: float | None = None
+    gesture_rate_per_min: float | None = None
+    hands_visible_pct: float | None = None
+    motion_level: float | None = None
+    warnings: list[str] = Field(default_factory=list)
+    observable_note: str = (
+        "Body metrics are computed from pose landmarks in sampled frames. "
+        "They are posture and movement proxies, not emotion, identity, or confidence detection."
+    )
+
+
 class TimestampedEvidence(BaseModel):
     start: float
     end: float
@@ -155,6 +184,7 @@ class AnalysisResult(BaseModel):
     slides: list[SlideResult] = Field(default_factory=list)
     timeline: list[TimelineEvent] = Field(default_factory=list)
     delivery_metrics: DeliveryMetrics = Field(default_factory=DeliveryMetrics)
+    body_metrics: BodyMetrics = Field(default_factory=BodyMetrics)
     slide_metrics: dict[str, Any] = Field(default_factory=dict)
     content_scores: dict[str, RubricScore] = Field(default_factory=dict)
     team_scores: dict[str, Any] = Field(default_factory=dict)
@@ -165,4 +195,3 @@ class AnalysisResult(BaseModel):
     recommended_drills: list[str] = Field(default_factory=list)
     timestamped_evidence: list[TimestampedEvidence] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
-

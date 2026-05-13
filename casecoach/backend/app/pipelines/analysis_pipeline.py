@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from app.config import Settings
+from app.extractors.body_tracking import analyze_body_posture
 from app.extractors.qwen_omni_client import QwenOmniClient
 from app.extractors.qwen_vl_client import QwenVLClient
 from app.models.schemas import AnalysisResult, TimestampedEvidence, VideoMetadata
@@ -40,11 +41,28 @@ async def run_analysis(job_id: str, settings: Settings, store: ObjectStore, jobs
         store.write_json(slides_path, [slide.model_dump() for slide in slides])
 
         jobs.update_status(job_id, "reasoning")
-        reasoning_warnings, model_reasoning = await _run_reasoning(settings, job_dir, preprocess_paths, transcript.model_dump(), slides)
+        frame_paths = [Path(path) for path in preprocess_paths.get("sampled_frames", [])]
+        body_metrics, body_observations = analyze_body_posture(frame_paths, video_metadata)
+        body_path = job_dir / "artifacts" / "body_metrics.json"
+        store.write_json(
+            body_path,
+            {
+                "metrics": body_metrics.model_dump(),
+                "observations": [observation.model_dump() for observation in body_observations],
+            },
+        )
+        reasoning_warnings, model_reasoning = await _run_reasoning(
+            settings,
+            job_dir,
+            preprocess_paths,
+            transcript.model_dump(),
+            slides,
+            body_metrics.model_dump(),
+        )
 
         jobs.update_status(job_id, "scoring")
         delivery_metrics = compute_delivery_metrics(transcript)
-        timeline = build_timeline(transcript, slides, delivery_metrics)
+        timeline = build_timeline(transcript, slides, delivery_metrics, body_metrics)
         result = build_report(
             job_id=job_id,
             video_metadata=video_metadata,
@@ -52,9 +70,10 @@ async def run_analysis(job_id: str, settings: Settings, store: ObjectStore, jobs
             slides=slides,
             timeline=timeline,
             delivery_metrics=delivery_metrics,
+            body_metrics=body_metrics,
             rubric_text=metadata.get("rubric", ""),
             qa_included=bool(metadata.get("qa_included", False)),
-            warnings=slide_warnings + reasoning_warnings,
+            warnings=slide_warnings + body_metrics.warnings + reasoning_warnings,
         )
         _merge_reasoning_into_result(result, model_reasoning)
         _assert_safe_report(result)
@@ -67,6 +86,7 @@ async def run_analysis(job_id: str, settings: Settings, store: ObjectStore, jobs
             {
                 "transcript_json": str(transcript_path),
                 "slides_json": str(slides_path),
+                "body_metrics_json": str(body_path),
                 "timeline_json": str(timeline_path),
                 "report_json": str(report_path),
             },
@@ -79,13 +99,13 @@ async def run_analysis(job_id: str, settings: Settings, store: ObjectStore, jobs
 
 
 async def _run_reasoning(
-    settings: Settings, job_dir: Path, preprocess_paths: dict[str, object], transcript, slides
+    settings: Settings, job_dir: Path, preprocess_paths: dict[str, object], transcript, slides, body_metrics: dict[str, object]
 ) -> tuple[list[str], dict[str, object]]:
     warnings: list[str] = []
     merged_reasoning: dict[str, object] = {}
     frame_paths = [Path(path) for path in (preprocess_paths.get("sampled_frames") or [])[:6]]
     slide_images = [Path(slide.image_path) for slide in slides[:6] if slide.image_path]
-    prompt = _reasoning_prompt(transcript, len(slides))
+    prompt = _reasoning_prompt(transcript, len(slides), body_metrics)
     qwen = QwenVLClient(settings.qwen_vl_base_url, settings.qwen_vl_api_key, settings.qwen_vl_model)
     response, warning = await qwen.complete_json(prompt, frame_paths + slide_images)
     if warning:
@@ -105,11 +125,13 @@ async def _run_reasoning(
     return warnings, merged_reasoning
 
 
-def _reasoning_prompt(transcript, slide_count: int) -> str:
+def _reasoning_prompt(transcript, slide_count: int, body_metrics: dict[str, object]) -> str:
     return (
         "Evaluate this case competition presentation evidence. Use observable behavior only. "
         "Return JSON with strengths, issues, timestamped_observations, and suggested_fixes. "
-        f"Slide count: {slide_count}. Transcript JSON: {json.dumps(transcript)[:12000]}"
+        "Do not infer emotion, personality, nervousness, honesty, protected traits, or official judging outcomes. "
+        f"Slide count: {slide_count}. Body metrics JSON: {json.dumps(body_metrics)[:3000]}. "
+        f"Transcript JSON: {json.dumps(transcript)[:12000]}"
     )
 
 

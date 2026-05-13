@@ -9,6 +9,7 @@ Backend-only MVP for Case Mirror video-model analysis.
 - A remote OpenAI-compatible Qwen3-VL endpoint for model reasoning, configured with `QWEN_VL_BASE_URL` and `QWEN_VL_API_KEY`.
 
 The backend can still run without Qwen configuration, but model reasoning sections will return warnings and deterministic fallback feedback.
+Body posture tracking uses open-source MediaPipe Pose and OpenCV when installed. Without those packages, the backend still runs and returns a clear warning in the report.
 
 ## Quick Start
 
@@ -16,7 +17,7 @@ The backend can still run without Qwen configuration, but model reasoning sectio
 cd casecoach/backend
 python3.12 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[test,slides,asr]"
+pip install -e ".[test,slides,asr,body]"
 uvicorn app.main:app --reload
 ```
 
@@ -33,13 +34,14 @@ CASECOACH_DATA_DIR=./data
 DATABASE_URL=sqlite:///./data/casecoach.sqlite3
 QWEN_VL_BASE_URL=
 QWEN_VL_API_KEY=
-QWEN_VL_MODEL=Qwen/Qwen3-VL-8B-Instruct
+QWEN_VL_MODEL=qwen3.6-plus
 QWEN_OMNI_BASE_URL=
 QWEN_OMNI_API_KEY=
 QWEN_OMNI_MODEL=Qwen/Qwen3-Omni-30B-A3B-Thinking
 ASR_PROVIDER=faster_whisper
 ASR_MODEL=base
 MAX_UPLOAD_MB=1024
+TAVILY_API_KEY=
 ```
 
 ## API
@@ -51,9 +53,9 @@ MAX_UPLOAD_MB=1024
 - `GET /api/timeline/{job_id}`
 - `GET /api/slides/{job_id}`
 - `GET /api/transcript/{job_id}`
+- `GET /api/body-metrics/{job_id}`
 - `GET /api/export/json/{job_id}`
 
 ## Safety Principle
 
 The backend separates observable metrics from interpretation. It must not infer protected traits, emotion, personality, official judging outcomes, or winner likelihood. Feedback should stay grounded in timestamps, transcript text, slide content, and computed metrics.
-
