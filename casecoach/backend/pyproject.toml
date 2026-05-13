@@ -20,6 +20,10 @@ asr = [
 slides = [
   "PyMuPDF>=1.24.0",
 ]
+body = [
+  "mediapipe>=0.10.14",
+  "opencv-python-headless>=4.10.0",
+]
 test = [
   "pytest>=8.3.0",
 ]

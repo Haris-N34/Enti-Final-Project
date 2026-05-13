@@ -27,6 +27,11 @@ async def get_transcript(job_id: str):
     return _read_artifact(job_id, "transcript_json")
 
 
+@router.get("/body-metrics/{job_id}")
+async def get_body_metrics(job_id: str):
+    return _read_artifact(job_id, "body_metrics_json")
+
+
 @router.get("/export/json/{job_id}")
 async def export_json(job_id: str):
     return _read_artifact(job_id, "report_json")
@@ -48,4 +53,3 @@ def _read_artifact(job_id: str, key: str):
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"Artifact '{key}' is missing on disk.")
     return objects.read_json(path)
-
