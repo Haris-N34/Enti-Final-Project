@@ -34,7 +34,7 @@ class GroqClient:
         headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         url = f"{self.base_url}/chat/completions" if not self.base_url.endswith("/chat/completions") else self.base_url
         try:
-            async with httpx.AsyncClient(timeout=120) as client:
+            async with httpx.AsyncClient(timeout=45) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
             body = response.json()

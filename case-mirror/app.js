@@ -82,6 +82,7 @@ let teachableImageError = "";
 let teachableImageInFlight = false;
 let lastTeachableAt = 0;
 let lastTeachableResult = null;
+let answerInputVersion = 0;
 
 function createSession() {
   return {
@@ -219,7 +220,8 @@ async function backendJson(path, options = {}, timeoutMs = BACKEND_TIMEOUT_MS) {
       signal: controller.signal
     });
     if (!response.ok) {
-      throw new Error(`Backend returned ${response.status}`);
+      const detail = await response.text().catch(() => "");
+      throw new Error(`Backend returned ${response.status}${detail ? `: ${detail.slice(0, 280)}` : ""}`);
     }
     state.backendAvailable = true;
     return await response.json();
@@ -2151,7 +2153,10 @@ function renderRehearsal() {
   );
 
   document.getElementById("backToBriefBtn").addEventListener("click", () => go("brief"));
-  document.getElementById("answerText").addEventListener("input", updateLiveMetrics);
+  answerInputVersion += 1;
+  const answerInput = document.getElementById("answerText");
+  if (answerInput) answerInput.value = "";
+  answerInput?.addEventListener("input", updateLiveMetrics);
   document.getElementById("saveAnswerBtn").addEventListener("click", () => saveRehearsalAnswer(progress, question));
   document.getElementById("micBtn").addEventListener("click", toggleMic);
   document.getElementById("webcamBtn").addEventListener("click", enableWebcam);
@@ -2216,6 +2221,26 @@ function updateLiveMetrics() {
   updateBodyMetricCards();
 }
 
+function resetAnswerInput() {
+  answerInputVersion += 1;
+  const textarea = document.getElementById("answerText");
+  if (textarea) textarea.value = "";
+  updateLiveMetrics();
+}
+
+function stopTranscription(silent = false) {
+  answerInputVersion += 1;
+  if (state.recognition && state.micActive) {
+    try {
+      state.recognition.stop();
+    } catch (error) {
+      // Browser speech recognition may already be stopped.
+    }
+  }
+  state.micActive = false;
+  if (!silent) showToast("Microphone stopped.");
+}
+
 async function saveRehearsalAnswer(progress, question) {
   const answerText = textValue("answerText");
   if (!answerText) {
@@ -2229,12 +2254,14 @@ async function saveRehearsalAnswer(progress, question) {
     button.textContent = progress.phase === "followup" ? "Saving..." : "Grading...";
   }
   const elapsed = Math.max(1, Math.round((Date.now() - (state.session.timerStartedAt || Date.now())) / 1000));
+  stopTranscription(true);
 
   if (progress.phase === "followup") {
     state.session.answers[progress.index].followUpAnswer = answerText;
     state.session.answers[progress.index].followUpMetrics = currentAnswerMetrics(answerText, elapsed);
     state.session.timerStartedAt = Date.now();
     saveSession();
+    resetAnswerInput();
     resetPoseSamples();
     render();
     return;
@@ -2265,6 +2292,7 @@ async function saveRehearsalAnswer(progress, question) {
   };
   state.session.timerStartedAt = Date.now();
   saveSession();
+  resetAnswerInput();
   resetPoseSamples();
   render();
 }
@@ -2277,17 +2305,17 @@ function toggleMic() {
   }
 
   if (state.recognition && state.micActive) {
-    state.recognition.stop();
-    state.micActive = false;
-    showToast("Microphone stopped.");
+    stopTranscription(false);
     return;
   }
 
   const recognition = new SpeechRecognition();
+  const inputVersion = answerInputVersion;
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.lang = "en-US";
   recognition.onresult = (event) => {
+    if (inputVersion !== answerInputVersion) return;
     const transcript = Array.from(event.results)
       .map((result) => result[0].transcript)
       .join(" ");
@@ -3073,16 +3101,16 @@ async function createReport() {
           method: "POST",
           body: JSON.stringify(liveReportPayload(evidence, localReport))
         },
-        90000
+        150000
       );
       state.session.reportWarnings = response.warnings || [];
       state.session.finalReport = normalizeReport(response.report, evidence, response.warnings || []);
       showToast(response.warnings?.length ? "Report generated with backend warnings." : "Evidence-based report ready.");
     } catch (error) {
       state.backendAvailable = false;
-      state.session.reportWarnings = ["Backend report generation failed; local fallback report was used."];
+      state.session.reportWarnings = [`Backend report generation failed; local fallback report was used. ${error.message || ""}`.trim()];
       state.session.finalReport = normalizeReport(localReport, evidence, state.session.reportWarnings);
-      showToast("Backend unavailable; local report fallback used.");
+      showToast("Backend report failed; local fallback report used.");
     }
     saveSession();
     go("report");
