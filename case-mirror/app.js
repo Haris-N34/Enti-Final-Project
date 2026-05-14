@@ -7,6 +7,7 @@ const MAX_BODY_EVENTS = 1800;
 const BODY_METRICS_VERSION = "body_metrics_v2";
 const TEACHABLE_IMAGE_MODEL_URL = window.CASE_MIRROR_TEACHABLE_IMAGE_MODEL_URL || "./assets/teachable-image/";
 const TEACHABLE_SAMPLE_INTERVAL_MS = 420;
+const TARGET_REHEARSAL_FOLLOW_UPS = 2;
 
 const defaultRubric = [
   "Problem framing and prompt alignment",
@@ -743,6 +744,7 @@ async function gradeAnswerWithBackend(question, answerText, metrics, elapsedSeco
 }
 
 function scoreAnswer(answer) {
+  if (answer?.questionSkipped) return 25;
   if (answer.backendGrade) {
     return clamp(
       (answer.backendGrade.content_score || 0) * 0.4 +
@@ -862,6 +864,7 @@ function generateReport(session) {
   const critique = session.recommendationCritique;
   const answers = session.answers.slice(0, 5);
   const answerScores = answers.map(scoreAnswer);
+  const skippedCount = answers.filter((answer) => answer.questionSkipped).length;
   const averageAnswer = answerScores.length
     ? answerScores.reduce((total, score) => total + score, 0) / answerScores.length
     : 55;
@@ -920,7 +923,9 @@ function generateReport(session) {
     },
     strengths: [
       brief.strengths[0],
-      "The rehearsal produced answers for all five judge-style prompts.",
+      skippedCount
+        ? `The rehearsal completed all five prompts, with ${skippedCount} skipped for later practice.`
+        : "The rehearsal produced answers for all five judge-style prompts.",
       answerScores[bestIndex] >= 70
         ? `The strongest answer gave judges a more defensible response to question ${bestIndex + 1}.`
         : "The team now has a clear list of answer areas to strengthen before presenting."
@@ -983,7 +988,7 @@ function summarizeAnswer(answer, index) {
   return {
     questionNumber: index + 1,
     question: answer.questionText,
-    summary: compactSentence(answer.answerText, "Answer recorded."),
+    summary: answer.questionSkipped ? "Question skipped." : compactSentence(answer.answerText, "Answer recorded."),
     score: scoreAnswer(answer)
   };
 }
@@ -992,6 +997,9 @@ function improvedAnswer(session, answer) {
   const company = session.companyName || "the client";
   const metric = session.caseBrief?.keywords?.[0] || "success metric";
   const question = answer?.questionText || "the judge question";
+  if (answer?.questionSkipped) {
+    return `For the skipped question "${question}", practice a 25-second answer with this structure: "For ${company}, the direct answer is [decision]. The evidence is [one metric or case fact]. The assumption we would defend is [assumption], and the risk trigger is [threshold that would make us adjust]."`;
+  }
   return `A stronger response to "${question}" would start with the direct answer, then give evidence and a caveat: "For ${company}, our recommendation is strongest if it improves ${metric} without exceeding the stated constraints. The assumption we would defend is the adoption or execution rate. We would test it with a first milestone, compare it against our base case, and pause expansion if the metric misses the threshold."`;
 }
 
@@ -1004,8 +1012,10 @@ function answerEvidence(answer) {
     rationale: answer.rationale,
     criterionTested: answer.criterionTested,
     answerText: answer.answerText,
+    questionSkipped: Boolean(answer.questionSkipped),
     followUp: answer.followUp || null,
     followUpAnswer: answer.followUpAnswer || "",
+    followUpSkipped: Boolean(answer.followUpSkipped),
     inputMode: answer.inputMode,
     durationSeconds: answer.durationSeconds,
     metrics: answer.metrics || null,
@@ -1767,7 +1777,7 @@ function renderSetup() {
             <h3>A parallel brief, written Q&amp;A, and a readiness report.</h3>
             <ul class="cm-aside-list">
               <li><strong>01 · Case brief</strong><span>Problem summary, key decision, story arc, likely judge questions.</span></li>
-              <li><strong>02 · Judge Q&amp;A</strong><span>Five prompts plus adaptive follow-ups in the competition's voice.</span></li>
+              <li><strong>02 · Judge Q&amp;A</strong><span>Five prompts plus up to two adaptive follow-ups in the competition's voice.</span></li>
               <li><strong>03 · Final report</strong><span>Strengths, risks, practice priorities, and answer-level notes.</span></li>
             </ul>
           </section>
@@ -2021,10 +2031,48 @@ function renderEmpty(title, body, button, route) {
 
 function currentRehearsalState() {
   const answers = state.session.answers || [];
-  if (!answers.length) return { index: 0, phase: "main" };
-  const last = answers[answers.length - 1];
-  if (!last.followUpAnswer) return { index: answers.length - 1, phase: "followup" };
-  return { index: answers.length, phase: "main" };
+  for (let index = 0; index < 5; index += 1) {
+    const answer = answers[index];
+    if (!answer?.answerText && !answer?.questionSkipped) return { index, phase: "main" };
+    if (answer.followUp && !answer.followUpAnswer && !answer.followUpSkipped) {
+      return { index, phase: "followup" };
+    }
+  }
+  return { index: 5, phase: "complete" };
+}
+
+function completedMainAnswerCount(session = state.session) {
+  return (session.answers || []).slice(0, 5).filter((answer) => answer?.answerText || answer?.questionSkipped).length;
+}
+
+function followUpCount(session = state.session) {
+  return (session.answers || []).filter((answer) => answer?.followUp).length;
+}
+
+function shouldOfferFollowUp(session, questionIndex, answerText, backendGrade) {
+  const asked = followUpCount(session);
+  if (asked >= TARGET_REHEARSAL_FOLLOW_UPS) return false;
+
+  const words = wordCount(answerText);
+  const backendScore = backendGrade
+    ? clamp(
+        (backendGrade.content_score || 0) * 0.4 +
+          (backendGrade.clarity_score || 0) * 0.25 +
+          (backendGrade.evidence_score || 0) * 0.2 +
+          (backendGrade.delivery_score || 0) * 0.15,
+        0,
+        100
+      )
+    : null;
+  const scheduledFollowUp = questionIndex === 1 || questionIndex === 3;
+  const needsRepair =
+    words < 22 ||
+    (backendScore !== null && backendScore < 68) ||
+    (backendGrade?.evidence_score !== undefined && backendGrade.evidence_score < 65);
+  const remainingMainQuestions = 5 - (questionIndex + 1);
+  const mustAskNowToReachTarget = TARGET_REHEARSAL_FOLLOW_UPS - asked > remainingMainQuestions;
+
+  return scheduledFollowUp || needsRepair || mustAskNowToReachTarget;
 }
 
 function renderRehearsal() {
@@ -2044,7 +2092,7 @@ function renderRehearsal() {
           <div>
             <span class="cm-badge cm-badge--green">Step 3 · Rehearsal complete</span>
             <h1 class="cm-page-title">Five answers down. Build the <span>report.</span></h1>
-            <p class="cm-page-lead">All five main judge-style questions have answers and adaptive follow-ups recorded.</p>
+            <p class="cm-page-lead">All five main judge-style questions have answers. Any optional follow-ups were captured or skipped.</p>
           </div>
           <button class="primary-btn cm-button-lift" id="generateReportBtn" type="button">${state.loading === "report" ? "Generating..." : "Generate final report"}</button>
         </section>
@@ -2113,6 +2161,11 @@ function renderRehearsal() {
           <div class="cm-form-actions">
             <div class="cm-form-status">Practice feedback only. Optional camera metrics use observable posture and movement proxies. No emotion, personality, protected-trait, or official judging claims.</div>
             <div class="cm-form-action-group">
+              ${
+                isFollowUp
+                  ? `<button class="secondary-btn" id="skipFollowUpBtn" type="button">Skip follow-up</button>`
+                  : `<button class="secondary-btn" id="skipQuestionBtn" type="button">Skip question</button>`
+              }
               <button class="secondary-btn" id="micBtn" type="button">Use microphone</button>
               <button class="primary-btn cm-button-lift cm-cta-qa" id="saveAnswerBtn" type="button">${isFollowUp ? "Save follow-up" : "Save and continue"}</button>
             </div>
@@ -2158,6 +2211,8 @@ function renderRehearsal() {
   if (answerInput) answerInput.value = "";
   answerInput?.addEventListener("input", updateLiveMetrics);
   document.getElementById("saveAnswerBtn").addEventListener("click", () => saveRehearsalAnswer(progress, question));
+  document.getElementById("skipQuestionBtn")?.addEventListener("click", () => skipQuestion(progress, question));
+  document.getElementById("skipFollowUpBtn")?.addEventListener("click", () => skipFollowUp(progress));
   document.getElementById("micBtn").addEventListener("click", toggleMic);
   document.getElementById("webcamBtn").addEventListener("click", enableWebcam);
   if (state.webcamStream) {
@@ -2170,11 +2225,11 @@ function answerTranscriptMarkup(answer) {
   return `
     <div class="cm-answer-card">
       <h3>Q${answer.questionNumber}: ${escapeHtml(answer.questionText)}</h3>
-      <p>${escapeHtml(compactSentence(answer.answerText, "No main answer recorded."))}</p>
+      <p>${escapeHtml(answer.questionSkipped ? "Question skipped." : compactSentence(answer.answerText, "No main answer recorded."))}</p>
       ${
         answer.followUp
           ? `<p class="hint"><strong>Follow-up:</strong> ${escapeHtml(answer.followUp.followUpText)}</p>
-             <p>${escapeHtml(compactSentence(answer.followUpAnswer || "", "Follow-up not answered yet."))}</p>`
+             <p>${escapeHtml(answer.followUpSkipped ? "Follow-up skipped." : compactSentence(answer.followUpAnswer || "", "Follow-up not answered yet."))}</p>`
           : ""
       }
       ${
@@ -2258,6 +2313,7 @@ async function saveRehearsalAnswer(progress, question) {
 
   if (progress.phase === "followup") {
     state.session.answers[progress.index].followUpAnswer = answerText;
+    state.session.answers[progress.index].followUpSkipped = false;
     state.session.answers[progress.index].followUpMetrics = currentAnswerMetrics(answerText, elapsed);
     state.session.timerStartedAt = Date.now();
     saveSession();
@@ -2269,12 +2325,15 @@ async function saveRehearsalAnswer(progress, question) {
 
   const metrics = currentAnswerMetrics(answerText, elapsed);
   const backendGrade = await gradeAnswerWithBackend(question, answerText, metrics, elapsed);
-  const followUp = backendGrade?.follow_up_question
-    ? {
-        followUpText: backendGrade.follow_up_question,
-        reason: "Generated by the backend from your answer, case context, market context, and observable metrics."
-      }
-    : generateFollowUp(question, answerText, state.session);
+  const shouldAskFollowUp = shouldOfferFollowUp(state.session, progress.index, answerText, backendGrade);
+  const followUp = shouldAskFollowUp
+    ? backendGrade?.follow_up_question
+      ? {
+          followUpText: backendGrade.follow_up_question,
+          reason: "Generated by the backend from your answer, case context, market context, and observable metrics."
+        }
+      : generateFollowUp(question, answerText, state.session)
+    : null;
   state.session.answers[progress.index] = {
     id: createId(),
     questionId: question.id,
@@ -2283,17 +2342,64 @@ async function saveRehearsalAnswer(progress, question) {
     rationale: question.rationale,
     criterionTested: question.criterionTested,
     answerText,
+    questionSkipped: false,
     inputMode: state.micActive ? "microphone_transcription" : "typed",
     durationSeconds: elapsed,
     metrics,
     backendGrade,
     followUp,
-    followUpAnswer: ""
+    followUpAnswer: "",
+    followUpSkipped: false
   };
   state.session.timerStartedAt = Date.now();
   saveSession();
   resetAnswerInput();
   resetPoseSamples();
+  render();
+}
+
+function skipFollowUp(progress) {
+  if (progress.phase !== "followup") return;
+  const answer = state.session.answers?.[progress.index];
+  if (!answer?.followUp) return;
+  stopTranscription(true);
+  answer.followUpSkipped = true;
+  answer.followUpAnswer = "";
+  answer.followUpMetrics = null;
+  state.session.timerStartedAt = Date.now();
+  saveSession();
+  resetAnswerInput();
+  resetPoseSamples();
+  showToast("Follow-up skipped.");
+  render();
+}
+
+function skipQuestion(progress, question) {
+  if (progress.phase !== "main") return;
+  stopTranscription(true);
+  const elapsed = Math.max(1, Math.round((Date.now() - (state.session.timerStartedAt || Date.now())) / 1000));
+  state.session.answers[progress.index] = {
+    id: createId(),
+    questionId: question.id,
+    questionNumber: question.questionNumber,
+    questionText: question.questionText,
+    rationale: question.rationale,
+    criterionTested: question.criterionTested,
+    answerText: "",
+    questionSkipped: true,
+    inputMode: "skipped",
+    durationSeconds: elapsed,
+    metrics: currentAnswerMetrics("", elapsed),
+    backendGrade: null,
+    followUp: null,
+    followUpAnswer: "",
+    followUpSkipped: false
+  };
+  state.session.timerStartedAt = Date.now();
+  saveSession();
+  resetAnswerInput();
+  resetPoseSamples();
+  showToast("Question skipped.");
   render();
 }
 
@@ -3086,8 +3192,8 @@ async function enableWebcam() {
 }
 
 async function createReport() {
-  if ((state.session.answers || []).filter((answer) => answer.followUpAnswer).length < 5) {
-    showToast("Complete all five questions and follow-ups first.");
+  if (completedMainAnswerCount(state.session) < 5) {
+    showToast("Complete all five main questions first.");
     return;
   }
   await withLoading("report", async () => {
@@ -3123,7 +3229,7 @@ function renderReport() {
     return;
   }
 
-  if (!state.session.finalReport && (state.session.answers || []).filter((answer) => answer.followUpAnswer).length >= 5) {
+  if (!state.session.finalReport && completedMainAnswerCount(state.session) >= 5) {
     const localReport = generateReport(state.session);
     const evidence = buildLiveEvidenceBundle(localReport);
     state.session.evidenceBundle = evidence;
@@ -3133,7 +3239,7 @@ function renderReport() {
   }
 
   if (!state.session.finalReport) {
-    renderEmpty("Complete rehearsal first", "Answer all five judge-style questions and follow-ups before creating the readiness report.", "Go to Q&A", "rehearsal");
+    renderEmpty("Complete rehearsal first", "Answer all five main judge-style questions before creating the readiness report.", "Go to Q&A", "rehearsal");
     return;
   }
 
@@ -3150,10 +3256,11 @@ function renderReport() {
               <span class="cm-report-session">Session ${escapeHtml(initials(state.session.companyName || "CM"))}-${state.session.id.slice(0, 4)}</span>
             </div>
             <div class="cm-report-actions">
+              <button class="primary-btn cm-button-lift" id="regenerateReportBtn" type="button">${state.loading === "report" ? "Regenerating..." : "Regenerate with API"}</button>
               <button class="secondary-btn" id="copyReportBtn" type="button">Copy report</button>
               <button class="secondary-btn" id="exportReportBtn" type="button">Export JSON</button>
               <button class="secondary-btn" id="exportEvidenceBtn" type="button">Export evidence</button>
-              <button class="primary-btn cm-button-lift" id="restartBtn" type="button">Restart with same inputs</button>
+              <button class="secondary-btn" id="restartBtn" type="button">Restart with same inputs</button>
             </div>
           </div>
 
@@ -3383,6 +3490,7 @@ function renderReport() {
   document.getElementById("copyReportBtn").addEventListener("click", copyReport);
   document.getElementById("exportReportBtn").addEventListener("click", exportReport);
   document.getElementById("exportEvidenceBtn").addEventListener("click", exportEvidence);
+  document.getElementById("regenerateReportBtn").addEventListener("click", createReport);
   document.getElementById("restartBtn").addEventListener("click", () => {
     state.session.caseBrief = null;
     state.session.recommendationCritique = null;

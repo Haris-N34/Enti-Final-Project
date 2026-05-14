@@ -269,25 +269,35 @@ async def generate_live_report(payload: LiveReportRequest) -> LiveReportResponse
     warnings.extend(persist_warnings)
     fallback = _fallback_report(evidence, payload.local_report)
 
-    client = GroqClient(settings.groq_base_url, settings.groq_api_key, settings.groq_model)
-    response, warning = await client.complete_json(
-        prompt=_report_prompt(evidence),
-        system_prompt=(
-            "You are a strict but helpful university case competition coach. "
-            "Return JSON only. Use observable metrics and transcript evidence. "
-            "Do not infer emotion, personality, protected traits, confidence, nervousness, or official judging outcomes."
-        ),
-    )
-    if warning:
-        warnings.append(warning)
-        _write_report_file(session_dir, fallback)
-        return LiveReportResponse(report=fallback, warnings=warnings)
-    if not isinstance(response, dict):
-        warnings.append("Groq response was not a JSON object; used fallback report.")
-        _write_report_file(session_dir, fallback)
-        return LiveReportResponse(report=fallback, warnings=warnings)
+    response: dict[str, Any] | None = None
+    report_prompt = _report_prompt(evidence)
 
-    report = _coerce_report_shape(response, fallback)
+    qwen_client = QwenVLClient(settings.qwen_vl_base_url, settings.qwen_vl_api_key, settings.qwen_vl_model)
+    response, warning = await qwen_client.complete_json(report_prompt)
+    if not isinstance(response, dict):
+        if warning:
+            warnings.append(warning)
+        elif qwen_client.configured:
+            warnings.append("Qwen response was not a JSON object; trying secondary report provider.")
+
+        groq_client = GroqClient(settings.groq_base_url, settings.groq_api_key, settings.groq_model)
+        response, warning = await groq_client.complete_json(
+            prompt=report_prompt,
+            system_prompt=(
+                "You are a strict but helpful university case competition coach. "
+                "Return JSON only. Use observable metrics and transcript evidence. "
+                "Do not infer emotion, personality, protected traits, confidence, nervousness, or official judging outcomes."
+            ),
+        )
+        if not isinstance(response, dict):
+            if warning:
+                warnings.append(warning)
+            elif groq_client.configured:
+                warnings.append("Secondary report provider response was not a JSON object; used fallback report.")
+            _write_report_file(session_dir, fallback)
+            return LiveReportResponse(report=fallback, warnings=warnings)
+
+    report = _sanitize_report_language(_coerce_report_shape(response, fallback))
     try:
         _assert_report_safety(report)
     except ValueError as exc:
@@ -1011,6 +1021,8 @@ def _report_warnings_from_evidence(evidence: dict[str, Any], body_metrics: dict[
 
 
 def _answer_score(answer: dict[str, Any], index: int) -> int:
+    if bool(answer.get("questionSkipped")):
+        return 25
     backend = answer.get("backendGrade") if isinstance(answer.get("backendGrade"), dict) else {}
     if backend:
         return _score(
@@ -1033,6 +1045,8 @@ def _answer_score(answer: dict[str, Any], index: int) -> int:
 
 
 def _answer_summary(answer: dict[str, Any], fallback: str) -> str:
+    if bool(answer.get("questionSkipped")):
+        return "Question skipped."
     text = str(answer.get("answerText") or answer.get("answer") or "")
     return _trim_text(text, fallback)
 
@@ -1307,3 +1321,32 @@ def _assert_report_safety(report: dict[str, Any]) -> None:
     for phrase in banned:
         if phrase in text:
             raise ValueError(f"Unsafe report language detected: {phrase}")
+
+
+def _sanitize_report_language(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _sanitize_report_language(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_report_language(item) for item in value]
+    if not isinstance(value, str):
+        return value
+
+    replacements = [
+        ("looked nervous", "showed observable delivery strain"),
+        ("nervousness", "delivery strain"),
+        ("nervous", "rushed or unclear"),
+        ("personality", "delivery pattern"),
+        ("confidence", "delivery clarity"),
+        ("authority", "clarity"),
+        ("attractiveness", "visual clarity"),
+        ("attractive", "visually clear"),
+        ("unprofessional", "needing more presentation polish"),
+        ("professionalism", "presentation polish"),
+        ("protected trait", "unsupported personal attribute"),
+        ("will win", "may perform better in practice"),
+        ("winner", "outcome"),
+    ]
+    sanitized = value
+    for phrase, replacement in replacements:
+        sanitized = re.sub(re.escape(phrase), replacement, sanitized, flags=re.IGNORECASE)
+    return sanitized

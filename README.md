@@ -98,7 +98,7 @@ Main backend responsibilities:
 From the repository root:
 
 ```bash
-python3 -m http.server 4173
+python3 serve_case_mirror.py
 ```
 
 Open:

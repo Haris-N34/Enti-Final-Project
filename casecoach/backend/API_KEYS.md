@@ -1,6 +1,6 @@
 # API Keys And Model Access
 
-The backend can run without remote model keys, but Qwen reasoning and Groq live report synthesis will be skipped until these values are configured.
+The backend can run without remote model keys, but Qwen live preparation, answer grading, and final report synthesis will be skipped until these values are configured.
 
 Important: the project's Teachable Machine model does not use an API key. It is a browser-loaded image model stored directly in the frontend at `case-mirror/assets/teachable-image/`. The backend only receives the summarized `teachable_*` outputs from the browser.
 
@@ -34,9 +34,9 @@ For the current live rehearsal setup, use:
 QWEN_VL_MODEL=qwen3.6-plus
 ```
 
-## Groq for Live Report Synthesis
+## Optional Groq Secondary Report Fallback
 
-Use this when you want the backend to synthesize the final live rehearsal report with a Groq-hosted OpenAI-compatible model.
+Qwen is the primary live report model. Use Groq only when you want a secondary OpenAI-compatible provider if Qwen report synthesis fails.
 
 - API docs: https://console.groq.com/docs/overview
 

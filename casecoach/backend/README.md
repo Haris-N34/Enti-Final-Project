@@ -6,8 +6,8 @@ Backend for Case Mirror upload analysis and live rehearsal support.
 
 - Python 3.12. The package intentionally pins `>=3.12,<3.13` because current video/ML packages lag newer Python releases.
 - `ffmpeg` and `ffprobe` on `PATH`.
-- A remote OpenAI-compatible Qwen endpoint for live prep and answer grading, configured with `QWEN_VL_BASE_URL` and `QWEN_VL_API_KEY`.
-- Optional Groq-compatible endpoint for live report synthesis, configured with `GROQ_BASE_URL` and `GROQ_API_KEY`.
+- A remote OpenAI-compatible Qwen endpoint for live prep, answer grading, and final report synthesis, configured with `QWEN_VL_BASE_URL` and `QWEN_VL_API_KEY`.
+- Optional Groq-compatible endpoint as a secondary final-report fallback, configured with `GROQ_BASE_URL` and `GROQ_API_KEY`.
 
 The backend can still run without Qwen configuration, but model reasoning sections will return warnings and deterministic fallback feedback.
 Body posture tracking uses open-source MediaPipe Pose and OpenCV when installed. Without those packages, the backend still runs and returns a clear warning in the report.
