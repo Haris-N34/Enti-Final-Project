@@ -84,6 +84,7 @@ let teachableImageInFlight = false;
 let lastTeachableAt = 0;
 let lastTeachableResult = null;
 let answerInputVersion = 0;
+let lastRehearsalPromptKey = "";
 
 function createSession() {
   return {
@@ -2120,6 +2121,12 @@ function renderRehearsal() {
     ? `Follow-up reason: ${answer.followUp.reason}`
     : `${question.rationale} Criterion tested: ${question.criterionTested}.`;
   const progressPercent = Math.round((progress.index / 5) * 100);
+  const promptKey = `${progress.index}:${progress.phase}:${prompt}`;
+
+  if (lastRehearsalPromptKey && lastRehearsalPromptKey !== promptKey) {
+    stopTranscription(true);
+  }
+  lastRehearsalPromptKey = promptKey;
 
   app.innerHTML = shellMarkup(
     3,
@@ -2215,6 +2222,7 @@ function renderRehearsal() {
   document.getElementById("skipFollowUpBtn")?.addEventListener("click", () => skipFollowUp(progress));
   document.getElementById("micBtn").addEventListener("click", toggleMic);
   document.getElementById("webcamBtn").addEventListener("click", enableWebcam);
+  resetAnswerInput();
   if (state.webcamStream) {
     setupPoseTracking();
   }
@@ -2432,10 +2440,12 @@ function toggleMic() {
     }
   };
   recognition.onerror = () => {
+    state.recognition = null;
     state.micActive = false;
     showToast("Microphone transcription failed. Typed answers still work.");
   };
   recognition.onend = () => {
+    state.recognition = null;
     state.micActive = false;
   };
   state.recognition = recognition;
