@@ -1,4 +1,6 @@
 const STORAGE_KEY = "caseMirror.session.v1";
+const AUTH_USERS_KEY = "caseMirror.users.v1";
+const AUTH_CURRENT_KEY = "caseMirror.currentUser.v1";
 const API_BASE = window.CASE_MIRROR_API_BASE || "http://localhost:8000";
 const BACKEND_TIMEOUT_MS = 45000;
 
@@ -47,6 +49,10 @@ const toast = document.getElementById("toast");
 
 const state = {
   session: loadSession(),
+  currentUser: loadCurrentUser(),
+  authMode: "signup",
+  authNextRoute: "setup",
+  authError: "",
   setupErrors: {},
   loading: "",
   error: "",
@@ -103,6 +109,38 @@ function loadSession() {
 
 function saveSession() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.session));
+}
+
+function loadUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_USERS_KEY) || "[]");
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveUsers(users) {
+  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
+}
+
+function loadCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem(AUTH_CURRENT_KEY) || "null");
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveCurrentUser(user) {
+  if (user) {
+    localStorage.setItem(AUTH_CURRENT_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(AUTH_CURRENT_KEY);
+  }
+}
+
+function isProtectedRoute(route) {
+  return ["setup", "brief", "rehearsal", "report"].includes(route);
 }
 
 function routeFromHash() {
@@ -867,10 +905,15 @@ function improvedAnswer(session, answer) {
 function render() {
   const route = routeFromHash();
 
-  if (route === "setup") renderSetup();
+  if (!state.currentUser && isProtectedRoute(route)) {
+    state.authNextRoute = route;
+    renderAuth();
+  } else if (route === "auth") renderAuth();
+  else if (route === "setup") renderSetup();
   else if (route === "brief") renderBrief();
   else if (route === "rehearsal") renderRehearsal();
   else if (route === "report") renderReport();
+  else if (route === "pricing") renderPricing();
   else renderHome();
   bindChromeActions();
   app.focus({ preventScroll: true });
@@ -890,6 +933,9 @@ function initials(name) {
 }
 
 function topNavMarkup(step = 0) {
+  const accountMarkup = state.currentUser
+    ? `<span class="cm-session-chip">signed in · ${escapeHtml(initials(state.currentUser.name || state.currentUser.email))}</span><button class="cm-pill-btn cm-pill-btn--ghost" id="logoutBtn" type="button">Log out</button>`
+    : '<a class="cm-pill-btn cm-pill-btn--ghost" href="#/auth">Log in</a>';
   const progress = [
     { route: "setup", label: "Setup" },
     { route: "brief", label: "Brief" },
@@ -903,6 +949,7 @@ function topNavMarkup(step = 0) {
       <a href="#/setup">Method</a>
       <a href="#/report">Sample report</a>
       <a href="#/rehearsal">For teams</a>
+      <a href="#/pricing">Pricing</a>
     </nav>
   `;
 
@@ -943,6 +990,7 @@ function topNavMarkup(step = 0) {
 
       <div class="cm-topbar-actions">
         ${step === 0 ? '<a class="cm-link-btn" href="#/report">Preview report</a>' : `<span class="cm-session-chip">session · ${escapeHtml(initials(state.session.companyName || "CM"))}-${state.session.id.slice(0, 4)}</span>`}
+        ${accountMarkup}
         <button class="cm-pill-btn cm-pill-btn--ghost" id="clearSessionBtn" type="button">Clear session</button>
         ${step === 0 ? '<a class="cm-pill-btn cm-pill-btn--teal" href="#/setup">Start session</a>' : '<a class="cm-pill-btn cm-pill-btn--navy" href="#/">Home</a>'}
       </div>
@@ -975,6 +1023,65 @@ function scoreTone(value) {
 
 function bindChromeActions() {
   document.getElementById("clearSessionBtn")?.addEventListener("click", clearSession);
+  document.getElementById("logoutBtn")?.addEventListener("click", logoutUser);
+  document.getElementById("authForm")?.addEventListener("submit", handleAuthSubmit);
+  document.getElementById("authModeToggle")?.addEventListener("click", toggleAuthMode);
+}
+
+function renderAuth() {
+  const isSignup = state.authMode === "signup";
+  app.innerHTML = shellMarkup(
+    0,
+    `
+      <section class="cm-auth-layout">
+        <div class="cm-auth-panel">
+          <span class="cm-badge cm-badge--teal">User onboarding</span>
+          <h1 class="cm-page-title">${isSignup ? "Create your <span>practice profile.</span>" : "Welcome back to <span>Case Mirror.</span>"}</h1>
+          <p class="cm-page-lead">
+            ${isSignup ? "Sign up to save your rehearsal access on this laptop and start a guided case practice session." : "Log in to continue into your case setup, Q&A rehearsal, and readiness report."}
+          </p>
+
+          <form class="cm-auth-form" id="authForm">
+            ${isSignup ? `
+              <label>
+                <span>Name</span>
+                <input id="authName" type="text" autocomplete="name" placeholder="Your name" required />
+              </label>
+            ` : ""}
+            <label>
+              <span>Email</span>
+              <input id="authEmail" type="email" autocomplete="email" placeholder="student@example.com" required />
+            </label>
+            <label>
+              <span>Password</span>
+              <input id="authPassword" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="Minimum 6 characters" required minlength="6" />
+            </label>
+
+            ${state.authError ? `<p class="cm-auth-error">${escapeHtml(state.authError)}</p>` : ""}
+
+            <button class="primary-btn cm-button-lift" type="submit">${isSignup ? "Create account" : "Log in"}</button>
+            <button class="secondary-btn" id="authModeToggle" type="button">
+              ${isSignup ? "Already have an account? Log in" : "Need an account? Sign up"}
+            </button>
+          </form>
+        </div>
+
+        <aside class="cm-auth-aside">
+          <span class="cm-eyebrow">What unlocks</span>
+          <ul class="cm-check-list">
+            <li>Case setup and saved session access</li>
+            <li>AI-generated judge-style Q&A</li>
+            <li>Readiness report after practice</li>
+            <li>Local demo profile on this laptop</li>
+          </ul>
+          <p>
+            This onboarding is a local demo flow for the static app. Production login would connect to a secure backend auth provider.
+          </p>
+        </aside>
+      </section>
+    `,
+    "cm-auth"
+  );
 }
 
 function renderHome() {
@@ -1005,7 +1112,7 @@ function renderHome() {
                 <span style="height: 27px" class="accent-dark"></span>
                 <span style="height: 30px" class="accent"></span>
               </div>
-              <p>Across 5 typed answers · practice feedback only</p>
+                  <p>Individualized Questions · practice feedback only</p>
             </div>
           </div>
         </div>
@@ -1128,6 +1235,134 @@ function renderHome() {
     showToast("Sample case loaded.");
     go("setup");
   });
+}
+
+function renderPricing() {
+  const plans = [
+    {
+      name: "Free",
+      price: "Free",
+      badge: "Preview",
+      tone: "soft",
+      description: "A simple way for students to test Case Mirror before paying.",
+      includes: [
+        "1 case practice session per month",
+        "Basic case setup",
+        "3 AI-generated judge-style questions",
+        "Basic answer feedback",
+        "Limited readiness summary",
+        "No PDF export",
+        "No saved practice history",
+        "No team collaboration"
+      ],
+      purpose: "Helps students new to case competitions get started without feeling overwhelmed, while giving serious users a clear reason to upgrade."
+    },
+    {
+      name: "Pro",
+      price: "Starting at $49.99/month",
+      badge: "Individual",
+      tone: "focus",
+      description: "Built for students seriously preparing for case competitions, pitch competitions, consulting challenges, and final presentations.",
+      includes: [
+        "Unlimited case setup sessions",
+        "Full AI-generated case briefs",
+        "8 judge-style Q&A questions per session",
+        "Detailed feedback after each answer",
+        "Final readiness report",
+        "PDF export",
+        "Academic, Consulting, and Industry panel styles",
+        "Saved practice history",
+        "Re-run weak questions",
+        "Structure, recommendation, risk, and time-discipline feedback",
+        "Priority access to new features"
+      ],
+      purpose: "Positions Case Mirror as a premium preparation tool for serious competitors who need focused competition practice beyond general AI tools."
+    },
+    {
+      name: "Enterprise",
+      price: "Custom pricing",
+      badge: "Scale",
+      tone: "enterprise",
+      description: "For universities, business schools, student clubs, entrepreneurship centres, incubators, accelerators, career centres, and organizations.",
+      includes: [
+        "Large-volume student or employee access",
+        "Custom university, club, or organization branding",
+        "Custom judging rubrics",
+        "Competition-specific simulations",
+        "Faculty/admin controls",
+        "Analytics dashboard",
+        "Dedicated onboarding",
+        "Dedicated support",
+        "Data and privacy review",
+        "Optional partnership package"
+      ],
+      purpose: "Uses quote-based pricing so access can scale with seats, implementation needs, reporting, custom rubrics, and support."
+    }
+  ];
+
+  app.innerHTML = shellMarkup(
+    0,
+    `
+      <section class="cm-pricing-hero">
+        <div class="cm-pricing-copy">
+          <span class="cm-badge cm-badge--teal">Pricing model</span>
+          <h1 class="cm-page-title">Free to test.<br /><span>Built to scale.</span></h1>
+          <p class="cm-page-lead">
+            Case Mirror moves from a low-friction student trial into premium individual prep,
+            team practice, and institution-wide programs.
+          </p>
+          <div class="cm-pricing-path" aria-label="Pricing strategy">
+            <span>Free</span>
+            <span>Pro</span>
+            <span>Enterprise</span>
+          </div>
+        </div>
+
+        <aside class="cm-pricing-summary" aria-label="Pricing strategy summary">
+          <span class="cm-eyebrow">Final strategy</span>
+          <strong>Free -> Pro -> Enterprise</strong>
+          <p>
+            Free brings users in, Pro monetizes serious individual competitors,
+            and Enterprise targets universities, clubs, incubators, and larger
+            organizations.
+          </p>
+        </aside>
+      </section>
+
+      <section class="cm-section cm-pricing-section">
+        <div class="cm-pricing-grid">
+          ${plans
+            .map(
+              (plan) => `
+                <article class="cm-pricing-card cm-pricing-card--${plan.tone}">
+                  <div class="cm-pricing-card-head">
+                    <span class="cm-badge ${plan.tone === "focus" ? "cm-badge--blue" : plan.tone === "team" ? "cm-badge--green" : plan.tone === "enterprise" ? "cm-badge--amber" : "cm-badge--teal"}">${plan.badge}</span>
+                    <h2>${plan.name} Plan</h2>
+                    <strong>${plan.price}</strong>
+                    ${plan.name === "Enterprise" ? "<small>Contact us for a quote</small>" : ""}
+                    <p>${plan.description}</p>
+                  </div>
+
+                  <div class="cm-pricing-includes">
+                    <span class="cm-eyebrow">Includes</span>
+                    <ul class="cm-check-list">
+                      ${plan.includes.map((item) => `<li>${item}</li>`).join("")}
+                    </ul>
+                  </div>
+
+                  <div class="cm-pricing-purpose">
+                    <span>Purpose</span>
+                    <p>${plan.purpose}</p>
+                  </div>
+                </article>
+              `
+            )
+            .join("")}
+        </div>
+      </section>
+    `,
+    "cm-pricing"
+  );
 }
 
 function renderSetup() {
@@ -2365,6 +2600,75 @@ function clearSession() {
   state.error = "";
   saveSession();
   showToast("Session cleared.");
+  go("home");
+  render();
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email
+  };
+}
+
+function handleAuthSubmit(event) {
+  event.preventDefault();
+  const email = textValue("authEmail").toLowerCase();
+  const password = document.getElementById("authPassword")?.value || "";
+  const name = textValue("authName");
+  const users = loadUsers();
+
+  state.authError = "";
+
+  if (state.authMode === "signup") {
+    if (users.some((user) => user.email === email)) {
+      state.authError = "An account with this email already exists. Try logging in.";
+      render();
+      return;
+    }
+    const user = {
+      id: createId(),
+      name: name || email.split("@")[0],
+      email,
+      password,
+      createdAt: new Date().toISOString()
+    };
+    users.push(user);
+    saveUsers(users);
+    state.currentUser = publicUser(user);
+    saveCurrentUser(state.currentUser);
+    showToast("Account created.");
+  } else {
+    const user = users.find((item) => item.email === email && item.password === password);
+    if (!user) {
+      state.authError = "Email or password does not match.";
+      render();
+      return;
+    }
+    state.currentUser = publicUser(user);
+    saveCurrentUser(state.currentUser);
+    showToast("Logged in.");
+  }
+
+  const nextRoute = state.authNextRoute || "setup";
+  state.authError = "";
+  go(nextRoute);
+  render();
+}
+
+function toggleAuthMode() {
+  state.authMode = state.authMode === "signup" ? "login" : "signup";
+  state.authError = "";
+  render();
+}
+
+function logoutUser() {
+  state.currentUser = null;
+  saveCurrentUser(null);
+  state.authMode = "login";
+  state.authNextRoute = "setup";
+  showToast("Logged out.");
   go("home");
   render();
 }
