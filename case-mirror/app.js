@@ -927,7 +927,11 @@ function topNavMarkup(step = 0) {
     <header class="cm-topbar">
       <a class="cm-brand" href="#/">
         <span class="cm-brand-mark">
-          <img src="./assets/images/case-mirror-logo.png" alt="Case Mirror logo" />
+          <img
+            class="cm-brand-mark-image"
+            src="./assets/images/case-mirror-logo.png"
+            alt="Case Mirror logo"
+          />
         </span>
         <span class="cm-brand-copy">
           <strong>Case Mirror</strong>
