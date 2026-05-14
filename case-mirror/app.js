@@ -3,6 +3,10 @@ const AUTH_USERS_KEY = "caseMirror.users.v1";
 const AUTH_CURRENT_KEY = "caseMirror.currentUser.v1";
 const API_BASE = window.CASE_MIRROR_API_BASE || "http://localhost:8000";
 const BACKEND_TIMEOUT_MS = 45000;
+const MAX_BODY_EVENTS = 1800;
+const BODY_METRICS_VERSION = "body_metrics_v2";
+const TEACHABLE_IMAGE_MODEL_URL = window.CASE_MIRROR_TEACHABLE_IMAGE_MODEL_URL || "./assets/teachable-image/";
+const TEACHABLE_SAMPLE_INTERVAL_MS = 420;
 
 const defaultRubric = [
   "Problem framing and prompt alignment",
@@ -63,12 +67,21 @@ const state = {
 };
 
 let poseLandmarker = null;
+let faceLandmarker = null;
+let visionFileset = null;
 let poseLoop = null;
 let previousPoseSample = null;
 let previousFrameSample = null;
 let poseSamples = [];
 let motionCanvas = null;
 let lastPoseTrackAt = 0;
+let teachableImageModel = null;
+let teachableImageReady = false;
+let teachableImageLoadAttempted = false;
+let teachableImageError = "";
+let teachableImageInFlight = false;
+let lastTeachableAt = 0;
+let lastTeachableResult = null;
 
 function createSession() {
   return {
@@ -86,7 +99,10 @@ function createSession() {
     recommendationCritique: null,
     questions: [],
     answers: [],
+    bodyEvents: [],
+    evidenceBundle: null,
     finalReport: null,
+    reportWarnings: [],
     timerStartedAt: null
   };
 }
@@ -663,11 +679,33 @@ function backendMetricsPayload(metrics, elapsedSeconds) {
     estimated_wpm: metrics.approximateWordsPerMinute || 0,
     elapsed_seconds: elapsedSeconds || metrics.durationSeconds || 0,
     pose_visible_pct: body.poseVisiblePct ?? null,
+    face_visible_pct: body.faceVisiblePct ?? null,
+    camera_facing_pct: body.cameraFacingPct ?? null,
     posture_stability: body.postureStability ?? null,
+    posture_alignment_score: body.postureAlignmentScore ?? null,
+    posture_stability_score: body.postureStabilityScore ?? null,
     shoulder_tilt_avg: body.shoulderTiltAvg ?? null,
-    gesture_rate_per_min: body.gestureRatePerMin ?? null,
+    gesture_rate_per_min: null,
     motion_level: body.motionLevel ?? null,
-    camera_engagement_proxy_pct: body.cameraEngagementProxyPct ?? null
+    camera_engagement_proxy_pct: body.cameraEngagementProxyPct ?? null,
+    hands_visible_pct: body.handsVisiblePct ?? null,
+    movement_control_score: body.movementControlScore ?? null,
+    body_positioning_score: body.bodyPositioningScore ?? null,
+    hidden_hands_pct: body.hiddenHandsPct ?? null,
+    arms_crossed_pct: body.armsCrossedPct ?? null,
+    excessive_movement_pct: body.excessiveMovementPct ?? null,
+    pointing_pct: body.pointingPct ?? null,
+    vision_provider: body.provider ?? null,
+    teachable_top_class: body.teachableTopClass ?? body.teachableDominantClass ?? null,
+    teachable_top_confidence_pct: body.teachableTopConfidencePct ?? null,
+    teachable_predictions: body.teachablePredictions || [],
+    teachable_behavior_score: body.teachableBehaviorScore ?? null,
+    teachable_good_pct: body.teachableGoodPct ?? null,
+    teachable_bad_pct: body.teachableBadPct ?? null,
+    teachable_caution_pct: body.teachableCautionPct ?? null,
+    teachable_dominant_class: body.teachableDominantClass ?? body.teachableTopClass ?? null,
+    teachable_dominant_meaning: body.teachableDominantMeaning ?? null,
+    teachable_category_pcts: body.teachableCategoryPcts || {}
   };
 }
 
@@ -752,16 +790,69 @@ function formatMetric(value) {
   return Number.isFinite(value) ? String(round1(value)) : "n/a";
 }
 
-function aggregateBodyMetrics(answers) {
-  const bodyItems = answers.map((answer) => answer.metrics?.body).filter((body) => body && Object.keys(body).length);
+function bodyMetricValue(body, ...keys) {
+  for (const key of keys) {
+    const value = body?.[key];
+    if (typeof value === "boolean") return value ? 100 : 0;
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return Number.NaN;
+}
+
+function aggregateBodyItems(bodyItems) {
+  bodyItems = bodyItems.filter((body) => body && Object.keys(body).length);
   if (!bodyItems.length) return null;
+  const categoryTotals = {};
+  bodyItems.forEach((body) => {
+    Object.entries(body.teachableCategoryPcts || {}).forEach(([label, value]) => {
+      const number = Number(value);
+      if (Number.isFinite(number)) {
+        categoryTotals[label] = (categoryTotals[label] || 0) + number;
+      }
+    });
+  });
+  const teachableCategoryPcts = Object.fromEntries(
+    Object.entries(categoryTotals).map(([label, total]) => [label, round1(total / bodyItems.length)])
+  );
+  const dominantFromCategories = Object.entries(teachableCategoryPcts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
   return {
-    poseVisiblePct: averageOrNull(bodyItems.map((body) => body.poseVisiblePct)),
-    postureStability: averageOrNull(bodyItems.map((body) => body.postureStability)),
-    gestureRatePerMin: averageOrNull(bodyItems.map((body) => body.gestureRatePerMin)),
-    cameraEngagementProxyPct: averageOrNull(bodyItems.map((body) => body.cameraEngagementProxyPct)),
-    motionLevel: averageOrNull(bodyItems.map((body) => body.motionLevel))
+    poseVisiblePct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "poseVisiblePct", "poseVisible"))),
+    faceVisiblePct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "faceVisiblePct", "faceVisible"))),
+    cameraFacingPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "cameraFacingPct", "cameraFacingScore", "cameraFacing"))),
+    postureStability: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "postureStability"))),
+    postureAlignmentScore: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "postureAlignmentScore"))),
+    postureStabilityScore: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "postureStabilityScore"))),
+    cameraEngagementProxyPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "cameraEngagementProxyPct", "cameraEngagementProxy"))),
+    handsVisiblePct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "handsVisiblePct", "handsVisibleScore", "handsVisible"))),
+    movementControlScore: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "movementControlScore"))),
+    bodyPositioningScore: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "bodyPositioningScore"))),
+    hiddenHandsPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "hiddenHandsPct"))),
+    armsCrossedPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "armsCrossedPct"))),
+    excessiveMovementPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "excessiveMovementPct"))),
+    pointingPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "pointingPct"))),
+    openPalmsPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "openPalmsPct"))),
+    neutralHandsPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "neutralHandsPct"))),
+    oneHandEmphasisPct: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "oneHandEmphasisPct"))),
+    motionLevel: averageOrNull(bodyItems.map((body) => bodyMetricValue(body, "motionLevel"))),
+    teachableBehaviorScore: averageOrNull(bodyItems.map((body) => body.teachableBehaviorScore)),
+    teachableGoodPct: averageOrNull(bodyItems.map((body) => body.teachableGoodPct)),
+    teachableBadPct: averageOrNull(bodyItems.map((body) => body.teachableBadPct)),
+    teachableCautionPct: averageOrNull(bodyItems.map((body) => body.teachableCautionPct)),
+    teachableDominantClass: mostCommon(bodyItems.map((body) => body.teachableDominantClass || body.teachableTopClass)) || dominantFromCategories,
+    teachableDominantMeaning: mostCommon(bodyItems.map((body) => body.teachableDominantMeaning)),
+    teachableCategoryPcts
   };
+}
+
+function aggregateBodyMetrics(answers) {
+  return aggregateBodyItems(answers.map((answer) => answer.metrics?.body));
+}
+
+function mostCommon(items) {
+  const counts = new Map();
+  items.filter(Boolean).forEach((item) => counts.set(item, (counts.get(item) || 0) + 1));
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 }
 
 function generateReport(session) {
@@ -794,8 +885,8 @@ function generateReport(session) {
     : 0;
   const bodyMetrics = aggregateBodyMetrics(answers);
   const bodyAdjustment =
-    bodyMetrics?.postureStability !== undefined && Number.isFinite(bodyMetrics.postureStability)
-      ? (bodyMetrics.postureStability - 70) * 0.08
+    bodyMetrics?.bodyPositioningScore !== undefined && Number.isFinite(bodyMetrics.bodyPositioningScore)
+      ? (bodyMetrics.bodyPositioningScore - 70) * 0.08
       : 0;
   const presentationClarityScore = clamp(
     78 - fillerTotal * 2 - (avgWpm > 190 || avgWpm < 85 ? 7 : 0) + bodyAdjustment,
@@ -900,6 +991,214 @@ function improvedAnswer(session, answer) {
   const metric = session.caseBrief?.keywords?.[0] || "success metric";
   const question = answer?.questionText || "the judge question";
   return `A stronger response to "${question}" would start with the direct answer, then give evidence and a caveat: "For ${company}, our recommendation is strongest if it improves ${metric} without exceeding the stated constraints. The assumption we would defend is the adoption or execution rate. We would test it with a first milestone, compare it against our base case, and pause expansion if the metric misses the threshold."`;
+}
+
+function answerEvidence(answer) {
+  return {
+    id: answer.id,
+    questionId: answer.questionId,
+    questionNumber: answer.questionNumber,
+    questionText: answer.questionText,
+    rationale: answer.rationale,
+    criterionTested: answer.criterionTested,
+    answerText: answer.answerText,
+    followUp: answer.followUp || null,
+    followUpAnswer: answer.followUpAnswer || "",
+    inputMode: answer.inputMode,
+    durationSeconds: answer.durationSeconds,
+    metrics: answer.metrics || null,
+    followUpMetrics: answer.followUpMetrics || null,
+    backendGrade: answer.backendGrade || null,
+    score: scoreAnswer(answer)
+  };
+}
+
+function buildGestureSummary() {
+  const answers = state.session.answers || [];
+  const events = state.session.bodyEvents || [];
+  const answerBodies = answers.map((answer) => answer.metrics?.body || {});
+  const bodyMetrics = aggregateBodyItems([...events, ...answerBodies]);
+  const classCounts = {};
+  [...events, ...answerBodies].forEach((item) => {
+    const label = item.teachableDominantClass || item.teachableTopClass || item.dominantClass;
+    if (label) classCounts[label] = (classCounts[label] || 0) + 1;
+  });
+  const dominantClass =
+    Object.entries(classCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
+    bodyMetrics?.teachableDominantClass ||
+    null;
+  return {
+    eventCount: events.length,
+    dominantClass,
+    classCounts,
+    bodyMetrics,
+    bodyMetricsVersion: BODY_METRICS_VERSION,
+    bodyQualityWarnings: buildBodyQualityWarnings(bodyMetrics || {}),
+    capturedAt: new Date().toISOString()
+  };
+}
+
+function buildLiveEvidenceBundle(localReport) {
+  const session = state.session;
+  const gestureSummary = buildGestureSummary();
+  const bodyEvents = (session.bodyEvents || []).slice(-MAX_BODY_EVENTS);
+  return {
+    schema_version: "live_evidence_v2",
+    body_metrics_version: BODY_METRICS_VERSION,
+    created_at: new Date().toISOString(),
+    session_id: session.id,
+    session: {
+      id: session.id,
+      created_at: session.createdAt,
+      generated_at: new Date().toISOString(),
+      company_name: session.companyName,
+      industry_context: session.industryContext,
+      target_presentation_length: session.targetPresentationLength
+    },
+    case_inputs: {
+      case_prompt: session.casePrompt,
+      judging_criteria: session.judgingCriteria,
+      team_recommendation: session.teamRecommendation,
+      team_constraints: session.teamConstraints,
+      slide_outline: session.slideOutline
+    },
+    prep: {
+      brief: session.caseBrief || {},
+      critique: session.recommendationCritique || {},
+      market_context: session.caseBrief?.marketContext || [],
+      market_sources: session.caseBrief?.marketSources || []
+    },
+    answers: (session.answers || []).slice(0, 5).map(answerEvidence),
+    body_summary: gestureSummary,
+    body_events: bodyEvents,
+    body_quality_warnings: gestureSummary.bodyQualityWarnings || [],
+    gesture_summary: gestureSummary,
+    gesture_events: bodyEvents,
+    local_report: localReport
+  };
+}
+
+function liveReportPayload(evidence, localReport) {
+  return {
+    session_id: state.session.id,
+    evidence_bundle: evidence,
+    company_name: state.session.companyName,
+    industry_context: state.session.industryContext,
+    target_presentation_length: state.session.targetPresentationLength,
+    case_prompt: state.session.casePrompt,
+    judging_criteria: state.session.judgingCriteria,
+    team_recommendation: state.session.teamRecommendation,
+    slide_outline: state.session.slideOutline,
+    team_constraints: state.session.teamConstraints,
+    brief: state.session.caseBrief || {},
+    critique: state.session.recommendationCritique || {},
+    answers: evidence.answers,
+    body_events: evidence.body_events,
+    body_summary: evidence.body_summary,
+    body_quality_warnings: evidence.body_quality_warnings,
+    body_metrics_version: evidence.body_metrics_version,
+    gesture_events: evidence.gesture_events,
+    gesture_summary: evidence.gesture_summary,
+    local_report: localReport
+  };
+}
+
+function normalizeReport(report, evidence, warnings = []) {
+  const fallback = generateReport(state.session);
+  const merged = { ...fallback, ...(report || {}) };
+  merged.scores = { ...fallback.scores, ...(report?.scores || {}) };
+  merged.deliveryMetrics = { ...fallback.deliveryMetrics, ...(report?.deliveryMetrics || {}) };
+  merged.bodyMovement = report?.bodyMovement || bodyMovementFromEvidence(evidence);
+  merged.tangibleImprovements =
+    Array.isArray(report?.tangibleImprovements) && report.tangibleImprovements.length
+      ? report.tangibleImprovements
+      : tangibleImprovementsFromEvidence(evidence, merged.bodyMovement);
+  merged.reportWarnings = [...(report?.reportWarnings || []), ...warnings].filter(Boolean);
+  return merged;
+}
+
+function bodyMovementFromEvidence(evidence) {
+  const bodyMetrics =
+    evidence?.body_summary?.bodyMetrics ||
+    evidence?.gesture_summary?.bodyMetrics ||
+    aggregateBodyMetrics(state.session.answers || []) ||
+    {};
+  const dominantClass =
+    evidence?.body_summary?.dominantClass ||
+    evidence?.gesture_summary?.dominantClass ||
+    bodyMetrics.teachableDominantClass ||
+    Object.entries(bodyMetrics.teachableCategoryPcts || {}).sort((a, b) => b[1] - a[1])[0]?.[0] ||
+    "No dominant class captured";
+  const topRepeatedIssue =
+    dominantClass && dominantClass !== "No dominant class captured"
+      ? `Repeated movement category: ${dominantClass}.`
+      : "No repeated Teachable Machine movement issue was captured.";
+  return {
+    summary:
+      dominantClass === "No dominant class captured"
+        ? "Movement evidence was limited or unavailable."
+        : `Dominant movement category: ${dominantClass}. Body positioning score: ${formatMetric(bodyMetrics.bodyPositioningScore)}.`,
+    dominantClass,
+    cameraFacingPct: bodyMetrics.cameraFacingPct ?? null,
+    faceVisiblePct: bodyMetrics.faceVisiblePct ?? null,
+    postureScore: bodyMetrics.postureAlignmentScore ?? bodyMetrics.postureStability ?? null,
+    handsVisiblePct: bodyMetrics.handsVisiblePct ?? null,
+    movementControlScore: bodyMetrics.movementControlScore ?? null,
+    bodyPositioningScore: bodyMetrics.bodyPositioningScore ?? null,
+    goodPct: bodyMetrics.teachableGoodPct ?? null,
+    cautionPct: bodyMetrics.teachableCautionPct ?? null,
+    badPct: bodyMetrics.teachableBadPct ?? null,
+    topRepeatedIssue,
+    movementDrill: movementDrillForClass(dominantClass),
+    drills: bodyDrillsFromMetrics(bodyMetrics, dominantClass)
+  };
+}
+
+function movementDrillForClass(label) {
+  if (label === "Hands too low / hidden") return "Run three 30-second answers with hands visible during the recommendation sentence.";
+  if (label === "Arms crossed") return "Practice the opening answer with arms uncrossed and hands neutral before each key claim.";
+  if (label === "Excessive movement") return "Plant your feet, gesture once per claim, then reset hands to neutral for two seconds.";
+  if (label === "Pointing") return "Replace repeated pointing with open-palmed emphasis on only the metric and risk sentence.";
+  return "Use one intentional gesture per claim, then return hands to a visible neutral position.";
+}
+
+function bodyDrillsFromMetrics(bodyMetrics, dominantClass) {
+  return [
+    `Camera-facing: deliver the first sentence while keeping your face centered toward the camera; current estimate ${formatPercent(bodyMetrics.cameraFacingPct)}.`,
+    `Posture: rehearse with shoulders level and upper body framed before speaking; current posture score ${formatMetric(bodyMetrics.postureAlignmentScore)}.`,
+    `Hands: keep both hands visible near mid-torso between emphasis moments; current hands visible ${formatPercent(bodyMetrics.handsVisiblePct)}.`,
+    movementDrillForClass(dominantClass)
+  ];
+}
+
+function tangibleImprovementsFromEvidence(evidence, bodyMovement) {
+  const weakest = state.session.answers?.slice(0, 5).sort((a, b) => scoreAnswer(a) - scoreAnswer(b))[0];
+  return [
+    {
+      area: "content",
+      currentEvidence: weakest?.questionText || "Weakest answer",
+      change: "Start with the direct answer, then add one measurable proof point and one caveat.",
+      practiceDrill: "Answer once in 45 seconds, then again in 25 seconds with the metric still included."
+    },
+    {
+      area: "delivery",
+      currentEvidence: bodyMovement?.topRepeatedIssue || "Movement evidence was limited.",
+      change: "Make visible hand position and movement resets intentional instead of continuous.",
+      practiceDrill: bodyMovement?.movementDrill || "Use one gesture per claim and reset hands between claims."
+    },
+    {
+      area: "delivery",
+      currentEvidence: `Camera-facing estimate: ${formatPercent(bodyMovement?.cameraFacingPct)}; posture score: ${formatMetric(bodyMovement?.postureScore)}.`,
+      change: "Start each answer with your face centered and shoulders level before moving into evidence.",
+      practiceDrill: "Do three 20-second answer openings while watching only the camera-facing and posture score cards."
+    },
+    {
+      area: "slides",
+      currentEvidence: state.session.slideOutline || "No slide outline supplied.",
+      change: "Add a visible metric and risk trigger to the recommendation or implementation slide.",
+      practiceDrill: "For each slide, say the one-sentence 'so what' before moving forward."
+    }
+  ];
 }
 
 function render() {
@@ -1526,7 +1825,10 @@ function renderSetup() {
       state.session.recommendationCritique = prep.critique;
       state.session.questions = prep.questions;
       state.session.answers = [];
+      state.session.bodyEvents = [];
+      state.session.evidenceBundle = null;
       state.session.finalReport = null;
+      state.session.reportWarnings = [];
       state.session.timerStartedAt = null;
       saveSession();
       showToast(prep.source === "backend" ? "Backend brief ready." : "Backend unavailable; local fallback used.");
@@ -1827,11 +2129,12 @@ function renderRehearsal() {
               <canvas id="poseCanvas"></canvas>
             </div>
             <div class="cm-answer-metrics cm-body-live-metrics">
-              <div><strong id="poseVisibleMetric">0%</strong><span>pose visible</span></div>
-              <div><strong id="postureStabilityMetric">n/a</strong><span>stability</span></div>
-              <div><strong id="gestureRateMetric">0</strong><span>gestures/min</span></div>
-              <div><strong id="cameraProxyMetric">n/a</strong><span>camera proxy</span></div>
+              <div><strong id="cameraFacingMetric">n/a</strong><span>camera-facing est.</span></div>
+              <div><strong id="postureScoreMetric">n/a</strong><span>posture score</span></div>
+              <div><strong id="handsVisibleMetric">n/a</strong><span>hands visible</span></div>
+              <div><strong id="movementControlMetric">n/a</strong><span>movement control</span></div>
             </div>
+            <small class="hint" id="teachableStatus">Teachable Machine: not started</small>
             <button class="secondary-btn" id="webcamBtn" type="button">Enable preview</button>
             <p>Preview only. Metrics are observable pose and movement proxies; no emotion, personality, or protected-trait inference.</p>
           </section>
@@ -1881,8 +2184,9 @@ function answerTranscriptMarkup(answer) {
               <div><strong>${answer.metrics.approximateWordsPerMinute}</strong><span>wpm</span></div>
               ${
                 answer.metrics.body?.poseVisiblePct !== undefined
-                  ? `<div><strong>${formatPercent(answer.metrics.body.poseVisiblePct)}</strong><span>pose visible</span></div>
-                     <div><strong>${formatMetric(answer.metrics.body.gestureRatePerMin)}</strong><span>gestures/min</span></div>`
+                  ? `<div><strong>${formatMetric(answer.metrics.body.bodyPositioningScore)}</strong><span>body score</span></div>
+                     <div><strong>${formatPercent(answer.metrics.body.cameraFacingPct)}</strong><span>camera-facing est.</span></div>
+                     <div><strong>${formatPercent(answer.metrics.body.handsVisiblePct)}</strong><span>hands visible</span></div>`
                   : ""
               }
               ${
@@ -2030,7 +2334,186 @@ function resetPoseSamples() {
   poseSamples = [];
   previousPoseSample = null;
   previousFrameSample = null;
+  lastTeachableResult = null;
+  lastTeachableAt = 0;
   updateBodyMetricCards();
+}
+
+function normalizeModelBaseUrl(url) {
+  return url.endsWith("/") ? url : `${url}/`;
+}
+
+async function getVisionFileset() {
+  if (visionFileset) return visionFileset;
+  const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
+  visionFileset = await vision.FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
+  );
+  return visionFileset;
+}
+
+async function setupTeachableImageModel() {
+  if (teachableImageReady) return true;
+  if (teachableImageLoadAttempted && teachableImageError) return false;
+  teachableImageLoadAttempted = true;
+
+  if (!window.tmImage) {
+    teachableImageError = "Teachable Machine image library did not load.";
+    return false;
+  }
+
+  try {
+    const modelBaseUrl = normalizeModelBaseUrl(TEACHABLE_IMAGE_MODEL_URL);
+    teachableImageModel = await window.tmImage.load(`${modelBaseUrl}model.json`, `${modelBaseUrl}metadata.json`);
+    teachableImageReady = true;
+    teachableImageError = "";
+    return true;
+  } catch (error) {
+    teachableImageReady = false;
+    teachableImageModel = null;
+    teachableImageError = "Teachable Machine image model could not be loaded.";
+    return false;
+  }
+}
+
+function currentBodyProvider() {
+  const providers = [];
+  if (teachableImageReady) providers.push("teachable_image_browser");
+  if (faceLandmarker) providers.push("mediapipe_face_browser");
+  providers.push(poseLandmarker ? "mediapipe_pose_browser" : "frame_motion_fallback");
+  return providers.join("+");
+}
+
+function teachableClassInfo(label) {
+  const normalized = String(label || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replaceAll("-", " ")
+    .replace(/\s+/g, " ");
+
+  if (normalized === "neutral hands") {
+    return {
+      label: "Neutral hands",
+      category: "good",
+      meaning: "Hands are visible and steady between gestures."
+    };
+  }
+  if (normalized === "open palms") {
+    return {
+      label: "Open palms",
+      category: "good",
+      meaning: "Open-palmed gestures are visible and usually support explanation."
+    };
+  }
+  if (normalized === "one hand emphasis") {
+    return {
+      label: "One-hand emphasis",
+      category: "good",
+      meaning: "One hand is being used to emphasize a point."
+    };
+  }
+  if (normalized === "pointing") {
+    return {
+      label: "Pointing",
+      category: "caution",
+      meaning: "Pointing is visible; use it sparingly and tie it to slide evidence."
+    };
+  }
+  if (normalized === "arms crossed") {
+    return {
+      label: "Arms crossed",
+      category: "bad",
+      meaning: "Arms appear crossed; return to an open neutral stance before key claims."
+    };
+  }
+  if (normalized === "hands too low") {
+    return {
+      label: "Hands too low / hidden",
+      category: "bad",
+      meaning: "Hands are low or hidden; keep gestures visible near mid-torso."
+    };
+  }
+  if (normalized === "excessive movement") {
+    return {
+      label: "Excessive movement",
+      category: "bad",
+      meaning: "Movement is frequent enough that it may distract from the answer."
+    };
+  }
+
+  return {
+    label: label || "Unknown movement",
+    category: "caution",
+    meaning: "Custom movement class from the Teachable Machine model."
+  };
+}
+
+function teachableResultFromPredictions(predictions) {
+  const normalized = (predictions || [])
+    .map((prediction) => {
+      const probability = Number(prediction.probability);
+      const info = teachableClassInfo(prediction.className);
+      return {
+        className: info.label,
+        originalClassName: prediction.className,
+        probability: Number.isFinite(probability) ? probability : 0,
+        probabilityPct: Number.isFinite(probability) ? round1(probability * 100) : 0,
+        category: info.category,
+        meaning: info.meaning
+      };
+    })
+    .sort((a, b) => b.probability - a.probability);
+
+  if (!normalized.length) return null;
+
+  const top = normalized[0];
+  const categoryTotals = { good: 0, caution: 0, bad: 0 };
+  const classTotals = {};
+  normalized.forEach((prediction) => {
+    categoryTotals[prediction.category] += prediction.probabilityPct;
+    classTotals[prediction.className] = prediction.probabilityPct;
+  });
+
+  return {
+    teachableTopClass: top.className,
+    teachableTopConfidencePct: top.probabilityPct,
+    teachablePredictions: normalized.map((prediction) => ({
+      className: prediction.className,
+      originalClassName: prediction.originalClassName,
+      probability: round1(prediction.probability),
+      probabilityPct: prediction.probabilityPct,
+      category: prediction.category,
+      meaning: prediction.meaning
+    })),
+    teachableBehaviorScore: clamp(categoryTotals.good + categoryTotals.caution * 0.65 + categoryTotals.bad * 0.35, 0, 100),
+    teachableGoodPct: round1(categoryTotals.good),
+    teachableCautionPct: round1(categoryTotals.caution),
+    teachableBadPct: round1(categoryTotals.bad),
+    teachableDominantClass: top.className,
+    teachableDominantMeaning: top.meaning,
+    teachableCategoryPcts: classTotals
+  };
+}
+
+function queueTeachableImagePrediction(video, now) {
+  if (!teachableImageReady || !teachableImageModel || teachableImageInFlight) return;
+  if (now - lastTeachableAt < TEACHABLE_SAMPLE_INTERVAL_MS) return;
+  lastTeachableAt = now;
+  teachableImageInFlight = true;
+
+  teachableImageModel
+    .predict(video, false)
+    .then((predictions) => {
+      const result = teachableResultFromPredictions(predictions);
+      if (result) lastTeachableResult = result;
+    })
+    .catch(() => {
+      teachableImageError = "Teachable Machine prediction failed.";
+    })
+    .finally(() => {
+      teachableImageInFlight = false;
+    });
 }
 
 async function setupPoseTracking() {
@@ -2039,13 +2522,13 @@ async function setupPoseTracking() {
 
   video.srcObject = state.webcamStream;
   await video.play().catch(() => {});
+  await setupTeachableImageModel();
+  await setupFaceTracking();
 
   if (!poseLandmarker) {
     try {
+      const fileset = await getVisionFileset();
       const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
-      const fileset = await vision.FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
-      );
       poseLandmarker = await vision.PoseLandmarker.createFromOptions(fileset, {
         baseOptions: {
           modelAssetPath:
@@ -2060,10 +2543,8 @@ async function setupPoseTracking() {
       });
     } catch (gpuError) {
       try {
+        const fileset = await getVisionFileset();
         const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
-        const fileset = await vision.FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
-        );
         poseLandmarker = await vision.PoseLandmarker.createFromOptions(fileset, {
           baseOptions: {
             modelAssetPath:
@@ -2084,6 +2565,139 @@ async function setupPoseTracking() {
 
   if (poseLoop) cancelAnimationFrame(poseLoop);
   poseLoop = requestAnimationFrame(trackPose);
+}
+
+async function setupFaceTracking() {
+  if (faceLandmarker) return true;
+  try {
+    const fileset = await getVisionFileset();
+    const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
+    faceLandmarker = await vision.FaceLandmarker.createFromOptions(fileset, {
+      baseOptions: {
+        modelAssetPath:
+          "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
+        delegate: "GPU"
+      },
+      runningMode: "VIDEO",
+      numFaces: 1,
+      minFaceDetectionConfidence: 0.25,
+      minFacePresenceConfidence: 0.25,
+      minTrackingConfidence: 0.25
+    });
+    return true;
+  } catch (gpuError) {
+    try {
+      const fileset = await getVisionFileset();
+      const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs");
+      faceLandmarker = await vision.FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task",
+          delegate: "CPU"
+        },
+        runningMode: "VIDEO",
+        numFaces: 1,
+        minFaceDetectionConfidence: 0.2,
+        minFacePresenceConfidence: 0.2,
+        minTrackingConfidence: 0.2
+      });
+      return true;
+    } catch (error) {
+      faceLandmarker = null;
+      return false;
+    }
+  }
+}
+
+function sampleFaceMetrics(video) {
+  if (!faceLandmarker) {
+    return { faceVisible: false, cameraFacingScore: null, cameraFacing: false };
+  }
+  try {
+    const result = faceLandmarker.detectForVideo(video, performance.now());
+    const landmarks = result.faceLandmarks?.[0];
+    if (!landmarks?.length) {
+      return { faceVisible: false, cameraFacingScore: null, cameraFacing: false };
+    }
+    const nose = landmarks[1] || landmarks[4];
+    const leftEye = landmarks[33] || landmarks[130];
+    const rightEye = landmarks[263] || landmarks[359];
+    const chin = landmarks[152];
+    const forehead = landmarks[10];
+    const eyeCenter = midpoint([leftEye, rightEye]);
+    const faceCenter = midpoint([nose, leftEye, rightEye, chin, forehead]);
+    const eyeDistance = Math.max(pointDistance(leftEye, rightEye), 0.04);
+    const yawProxy = Math.abs((nose?.x || eyeCenter.x) - eyeCenter.x) / eyeDistance;
+    const rollDeg = Math.abs((Math.atan2((rightEye?.y || 0) - (leftEye?.y || 0), (rightEye?.x || 0) - (leftEye?.x || 0)) * 180) / Math.PI);
+    const frameCenterPenalty = Math.abs(faceCenter.x - 0.5) * 55 + Math.abs(faceCenter.y - 0.43) * 35;
+    const cameraFacingScore = clamp(100 - yawProxy * 135 - rollDeg * 1.4 - frameCenterPenalty, 0, 100);
+    return {
+      faceVisible: true,
+      cameraFacing: cameraFacingScore >= 55,
+      cameraFacingScore,
+      faceCenterX: round1(faceCenter.x * 100),
+      faceCenterY: round1(faceCenter.y * 100),
+      faceRollDeg: round1(rollDeg),
+      faceYawProxy: round1(yawProxy * 100)
+    };
+  } catch (error) {
+    return { faceVisible: false, cameraFacingScore: null, cameraFacing: false };
+  }
+}
+
+function teachableCategoryPct(categories, label) {
+  const target = teachableClassInfo(label).label;
+  const match = Object.entries(categories || {}).find(([key]) => teachableClassInfo(key).label === target);
+  return match ? Number(match[1]) || 0 : 0;
+}
+
+function finalizeBodySample(sample) {
+  const categories = sample.teachableCategoryPcts || {};
+  const hiddenHandsPct = teachableCategoryPct(categories, "hands too low");
+  const armsCrossedPct = teachableCategoryPct(categories, "arms crossed");
+  const excessiveMovementPct = teachableCategoryPct(categories, "excessive movement");
+  const pointingPct = teachableCategoryPct(categories, "pointing");
+  const openPalmsPct = teachableCategoryPct(categories, "open palms");
+  const neutralHandsPct = teachableCategoryPct(categories, "neutral hands");
+  const oneHandPct = teachableCategoryPct(categories, "one hand emphasis");
+  const handsVisibleScore =
+    sample.handsVisibleScore ??
+    clamp(openPalmsPct + neutralHandsPct + oneHandPct + Math.max(0, 100 - hiddenHandsPct) * 0.35, 0, 100);
+  const movementControlScore =
+    sample.movementControlScore ??
+    clamp(100 - excessiveMovementPct - pointingPct * 0.35 - (sample.motionLevel || 0) * 2, 0, 100);
+  const cameraFacingScore = sample.cameraFacingScore ?? sample.cameraEngagementProxy ?? null;
+  const postureAlignmentScore = sample.postureAlignmentScore ?? sample.postureStability ?? null;
+  const postureStabilityScore = sample.postureStabilityScore ?? sample.postureStability ?? null;
+  const weighted = [
+    [cameraFacingScore, 0.3],
+    [postureAlignmentScore, 0.25],
+    [postureStabilityScore, 0.2],
+    [handsVisibleScore, 0.15],
+    [movementControlScore, 0.1]
+  ].filter(([value]) => Number.isFinite(value));
+  const bodyPositioningScore = weighted.length
+    ? round1(weighted.reduce((total, [value, weight]) => total + value * weight, 0) / weighted.reduce((total, [, weight]) => total + weight, 0))
+    : null;
+
+  return {
+    ...sample,
+    cameraFacingScore,
+    cameraFacing: sample.cameraFacing || (cameraFacingScore !== null && cameraFacingScore >= 55),
+    postureAlignmentScore,
+    postureStabilityScore,
+    handsVisibleScore,
+    handsVisible: sample.handsVisible || handsVisibleScore >= 45,
+    movementControlScore,
+    bodyPositioningScore,
+    hiddenHandsPct: round1(hiddenHandsPct),
+    armsCrossedPct: round1(armsCrossedPct),
+    excessiveMovementPct: round1(excessiveMovementPct),
+    pointingPct: round1(pointingPct),
+    openPalmsPct: round1(openPalmsPct),
+    neutralHandsPct: round1(neutralHandsPct),
+    oneHandEmphasisPct: round1(oneHandPct)
+  };
 }
 
 function trackPose(now) {
@@ -2108,13 +2722,23 @@ function trackPose(now) {
   let sample = {
     timestamp: Date.now(),
     poseVisible: false,
+    faceVisible: false,
     postureStability: null,
+    postureAlignmentScore: null,
+    postureStabilityScore: null,
     shoulderTilt: null,
     gestureEvent: motion.gestureEvent,
     gestureIntensity: motion.motionLevel,
     motionLevel: motion.motionLevel,
-    cameraEngagementProxy: null
+    cameraEngagementProxy: null,
+    cameraFacingScore: null,
+    cameraFacing: false,
+    handsVisible: false,
+    handsVisibleScore: null,
+    movementControlScore: null,
+    bodyPositioningScore: null
   };
+  sample = { ...sample, ...sampleFaceMetrics(video) };
 
   if (poseLandmarker) {
     try {
@@ -2133,8 +2757,15 @@ function trackPose(now) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  queueTeachableImagePrediction(video, now);
+  if (lastTeachableResult) {
+    sample = { ...sample, ...lastTeachableResult };
+  }
+  sample = finalizeBodySample(sample);
+
   poseSamples.push(sample);
   if (poseSamples.length > 600) poseSamples = poseSamples.slice(-600);
+  recordBodyEvent(sample);
   updateBodyMetricCards();
 }
 
@@ -2157,8 +2788,11 @@ function samplePoseMetrics(landmarks, motionLevel) {
   const torsoCenter = midpoint([shoulderCenter, hipCenter]);
   const shoulderWidth = Math.max(pointDistance(leftShoulder, rightShoulder), 0.08);
   const shoulderTilt = Math.abs((Math.atan2(rightShoulder.y - leftShoulder.y, rightShoulder.x - leftShoulder.x) * 180) / Math.PI);
+  const torsoLean = Math.abs(shoulderCenter.x - hipCenter.x) / shoulderWidth;
   const torsoShift = previousPoseSample?.torsoCenter ? pointDistance(torsoCenter, previousPoseSample.torsoCenter) : 0;
-  const postureStability = clamp(100 - shoulderTilt * 1.3 - torsoShift * 420 - motionLevel * 8, 0, 100);
+  const postureAlignmentScore = clamp(100 - shoulderTilt * 2 - torsoLean * 115 - Math.abs(torsoCenter.x - 0.5) * 30, 0, 100);
+  const postureStabilityScore = clamp(100 - torsoShift * 460 - motionLevel * 3.5, 0, 100);
+  const postureStability = round1((postureAlignmentScore * 0.55 + postureStabilityScore * 0.45));
   const wristMotion = previousPoseSample
     ? average([
         landmarkVisible(leftWrist, 0.15) ? pointDistance(leftWrist, previousPoseSample.leftWrist) : Number.NaN,
@@ -2167,6 +2801,9 @@ function samplePoseMetrics(landmarks, motionLevel) {
     : 0;
   const gestureIntensity = Math.max(wristMotion * 120, motionLevel);
   const gestureEvent = wristMotion > 0.018 || motionLevel > 5.5;
+  const handsVisibleCount = [leftWrist, rightWrist].filter((point) => landmarkVisible(point, 0.15)).length;
+  const handsVisibleScore = handsVisibleCount * 50;
+  const movementControlScore = clamp(100 - motionLevel * 4.2 - Math.max(0, gestureIntensity - 5) * 2.1, 0, 100);
   const headCentered = Math.max(0, 100 - (Math.abs(nose.x - shoulderCenter.x) / shoulderWidth) * 95);
   const verticalHeadOffset = shoulderCenter.y - nose.y;
   const headUpright = Math.max(0, 100 - Math.abs(verticalHeadOffset - 0.22) * 160);
@@ -2181,11 +2818,17 @@ function samplePoseMetrics(landmarks, motionLevel) {
   return {
     poseVisible: true,
     postureStability,
+    postureAlignmentScore,
+    postureStabilityScore,
     shoulderTilt,
+    torsoLeanPct: round1(torsoLean * 100),
     gestureEvent,
     gestureIntensity,
     motionLevel,
-    cameraEngagementProxy
+    cameraEngagementProxy,
+    handsVisible: handsVisibleCount > 0,
+    handsVisibleScore,
+    movementControlScore
   };
 }
 
@@ -2220,29 +2863,143 @@ function sampleMotionMetrics(video) {
 function summarizePoseSamples() {
   if (!poseSamples.length) return {};
   const visible = poseSamples.filter((sample) => sample.poseVisible);
-  const durationMinutes = Math.max(0.1, (poseSamples.at(-1).timestamp - poseSamples[0].timestamp) / 60000);
-  const gestureEvents = poseSamples.filter((sample) => sample.gestureEvent).length;
-  return {
+  const faceVisible = poseSamples.filter((sample) => sample.faceVisible);
+  const cameraFacing = faceVisible.filter((sample) => sample.cameraFacing);
+  const categoryTotals = {};
+  poseSamples.forEach((sample) => {
+    Object.entries(sample.teachableCategoryPcts || {}).forEach(([label, value]) => {
+      const number = Number(value);
+      if (Number.isFinite(number)) categoryTotals[label] = (categoryTotals[label] || 0) + number;
+    });
+  });
+  const teachableCategoryPcts = Object.fromEntries(
+    Object.entries(categoryTotals).map(([label, total]) => [label, round1(total / poseSamples.length)])
+  );
+  const dominantCategory = Object.entries(teachableCategoryPcts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  const summary = {
+    bodyMetricsVersion: BODY_METRICS_VERSION,
     poseVisiblePct: round1((visible.length / poseSamples.length) * 100),
-    postureStability: visible.length ? round1(average(visible.map((sample) => sample.postureStability))) : null,
+    faceVisiblePct: round1((faceVisible.length / poseSamples.length) * 100),
+    cameraFacingPct: faceVisible.length ? round1((cameraFacing.length / faceVisible.length) * 100) : null,
+    postureAlignmentScore: visible.length ? averageOrNull(visible.map((sample) => sample.postureAlignmentScore)) : null,
+    postureStabilityScore: visible.length ? averageOrNull(visible.map((sample) => sample.postureStabilityScore)) : null,
+    postureStability: visible.length ? averageOrNull(visible.map((sample) => sample.postureStability)) : null,
     shoulderTiltAvg: visible.length ? round1(average(visible.map((sample) => sample.shoulderTilt))) : null,
-    gestureRatePerMin: round1(gestureEvents / durationMinutes),
     motionLevel: round1(average(poseSamples.map((sample) => sample.motionLevel))),
-    cameraEngagementProxyPct: visible.length ? round1(average(visible.map((sample) => sample.cameraEngagementProxy))) : null,
-    provider: poseLandmarker ? "mediapipe_pose_browser" : "frame_motion_fallback"
+    cameraEngagementProxyPct: visible.length ? averageOrNull(visible.map((sample) => sample.cameraEngagementProxy)) : null,
+    handsVisiblePct: averageOrNull(poseSamples.map((sample) => sample.handsVisibleScore)),
+    movementControlScore: averageOrNull(poseSamples.map((sample) => sample.movementControlScore)),
+    bodyPositioningScore: averageOrNull(poseSamples.map((sample) => sample.bodyPositioningScore)),
+    hiddenHandsPct: averageOrNull(poseSamples.map((sample) => sample.hiddenHandsPct)),
+    armsCrossedPct: averageOrNull(poseSamples.map((sample) => sample.armsCrossedPct)),
+    excessiveMovementPct: averageOrNull(poseSamples.map((sample) => sample.excessiveMovementPct)),
+    pointingPct: averageOrNull(poseSamples.map((sample) => sample.pointingPct)),
+    openPalmsPct: averageOrNull(poseSamples.map((sample) => sample.openPalmsPct)),
+    neutralHandsPct: averageOrNull(poseSamples.map((sample) => sample.neutralHandsPct)),
+    oneHandEmphasisPct: averageOrNull(poseSamples.map((sample) => sample.oneHandEmphasisPct)),
+    provider: currentBodyProvider(),
+    teachableTopClass: mostCommon(poseSamples.map((sample) => sample.teachableTopClass)) || dominantCategory,
+    teachableTopConfidencePct: averageOrNull(poseSamples.map((sample) => sample.teachableTopConfidencePct)),
+    teachableBehaviorScore: averageOrNull(poseSamples.map((sample) => sample.teachableBehaviorScore)),
+    teachableGoodPct: averageOrNull(poseSamples.map((sample) => sample.teachableGoodPct)),
+    teachableBadPct: averageOrNull(poseSamples.map((sample) => sample.teachableBadPct)),
+    teachableCautionPct: averageOrNull(poseSamples.map((sample) => sample.teachableCautionPct)),
+    teachableDominantClass: mostCommon(poseSamples.map((sample) => sample.teachableDominantClass)) || dominantCategory,
+    teachableDominantMeaning: mostCommon(poseSamples.map((sample) => sample.teachableDominantMeaning)),
+    teachableCategoryPcts
   };
+  summary.bodyQualityWarnings = buildBodyQualityWarnings(summary);
+  return summary;
+}
+
+function buildBodyQualityWarnings(summary) {
+  const warnings = [];
+  if (!summary || !Object.keys(summary).length) {
+    return ["No webcam body samples were captured."];
+  }
+  if (Number.isFinite(summary.faceVisiblePct) && summary.faceVisiblePct < 35) {
+    warnings.push("Face visibility was low, so camera-facing estimates are directional.");
+  }
+  if (Number.isFinite(summary.poseVisiblePct) && summary.poseVisiblePct < 35) {
+    warnings.push("Upper-body pose visibility was low, so posture estimates are directional.");
+  }
+  if (!summary.teachableDominantClass && !Object.keys(summary.teachableCategoryPcts || {}).length) {
+    warnings.push("No Teachable Machine movement class distribution was captured.");
+  }
+  return warnings;
 }
 
 function updateBodyMetricCards() {
   const summary = summarizePoseSamples();
-  const poseVisible = document.getElementById("poseVisibleMetric");
-  const posture = document.getElementById("postureStabilityMetric");
-  const gesture = document.getElementById("gestureRateMetric");
-  const camera = document.getElementById("cameraProxyMetric");
-  if (poseVisible) poseVisible.textContent = summary.poseVisiblePct === undefined ? "0%" : formatPercent(summary.poseVisiblePct);
-  if (posture) posture.textContent = formatMetric(summary.postureStability);
-  if (gesture) gesture.textContent = summary.gestureRatePerMin === undefined ? "0" : formatMetric(summary.gestureRatePerMin);
-  if (camera) camera.textContent = formatPercent(summary.cameraEngagementProxyPct);
+  const cameraFacing = document.getElementById("cameraFacingMetric");
+  const posture = document.getElementById("postureScoreMetric");
+  const hands = document.getElementById("handsVisibleMetric");
+  const movement = document.getElementById("movementControlMetric");
+  const teachableStatus = document.getElementById("teachableStatus");
+  if (cameraFacing) cameraFacing.textContent = formatPercent(summary.cameraFacingPct);
+  if (posture) posture.textContent = formatMetric(summary.postureAlignmentScore);
+  if (hands) hands.textContent = formatPercent(summary.handsVisiblePct);
+  if (movement) movement.textContent = formatMetric(summary.movementControlScore);
+  if (teachableStatus) {
+    if (teachableImageReady && summary.teachableTopClass) {
+      teachableStatus.textContent = `Teachable Machine: ${summary.teachableTopClass} (${formatPercent(summary.teachableTopConfidencePct)})`;
+    } else if (teachableImageReady) {
+      teachableStatus.textContent = "Teachable Machine: loaded, waiting for webcam samples";
+    } else if (teachableImageError) {
+      teachableStatus.textContent = `Teachable Machine: ${teachableImageError}`;
+    } else {
+      teachableStatus.textContent = "Teachable Machine: not started";
+    }
+  }
+}
+
+function recordBodyEvent(sample) {
+  const progress = ensureBrief() ? currentRehearsalState() : { index: 0, phase: "idle" };
+  const question = state.session.questions?.[progress.index] || {};
+  const event = {
+    timestamp: new Date().toISOString(),
+    timestampMs: sample.timestamp,
+    sessionId: state.session.id,
+    questionNumber: question.questionNumber || progress.index + 1,
+    phase: progress.phase,
+    bodyMetricsVersion: BODY_METRICS_VERSION,
+    provider: currentBodyProvider(),
+    poseVisible: sample.poseVisible,
+    faceVisible: sample.faceVisible,
+    cameraFacing: sample.cameraFacing,
+    cameraFacingScore: sample.cameraFacingScore,
+    postureStability: sample.postureStability,
+    postureAlignmentScore: sample.postureAlignmentScore,
+    postureStabilityScore: sample.postureStabilityScore,
+    shoulderTilt: sample.shoulderTilt,
+    torsoLeanPct: sample.torsoLeanPct,
+    gestureEvent: sample.gestureEvent,
+    gestureIntensity: sample.gestureIntensity,
+    motionLevel: sample.motionLevel,
+    cameraEngagementProxy: sample.cameraEngagementProxy,
+    handsVisible: sample.handsVisible,
+    handsVisibleScore: sample.handsVisibleScore,
+    movementControlScore: sample.movementControlScore,
+    bodyPositioningScore: sample.bodyPositioningScore,
+    hiddenHandsPct: sample.hiddenHandsPct,
+    armsCrossedPct: sample.armsCrossedPct,
+    excessiveMovementPct: sample.excessiveMovementPct,
+    pointingPct: sample.pointingPct,
+    openPalmsPct: sample.openPalmsPct,
+    neutralHandsPct: sample.neutralHandsPct,
+    oneHandEmphasisPct: sample.oneHandEmphasisPct,
+    teachableTopClass: sample.teachableTopClass || null,
+    teachableTopConfidencePct: sample.teachableTopConfidencePct ?? null,
+    teachablePredictions: sample.teachablePredictions || [],
+    teachableBehaviorScore: sample.teachableBehaviorScore ?? null,
+    teachableGoodPct: sample.teachableGoodPct ?? null,
+    teachableBadPct: sample.teachableBadPct ?? null,
+    teachableCautionPct: sample.teachableCautionPct ?? null,
+    teachableDominantClass: sample.teachableDominantClass || sample.teachableTopClass || null,
+    teachableDominantMeaning: sample.teachableDominantMeaning || null,
+    teachableCategoryPcts: sample.teachableCategoryPcts || {}
+  };
+  state.session.bodyEvents = [...(state.session.bodyEvents || []), event].slice(-MAX_BODY_EVENTS);
 }
 
 function drawPose(ctx, landmarks, canvas) {
@@ -2291,7 +3048,13 @@ async function enableWebcam() {
     }
     video.srcObject = state.webcamStream;
     await setupPoseTracking();
-    showToast(poseLandmarker ? "Webcam and body tracking enabled." : "Webcam enabled. Motion fallback active; pose model unavailable.");
+    if (teachableImageReady && poseLandmarker) {
+      showToast("Webcam, Teachable Machine, and pose tracking enabled.");
+    } else if (teachableImageReady) {
+      showToast("Webcam and Teachable Machine enabled. Motion fallback active.");
+    } else {
+      showToast(poseLandmarker ? "Webcam and body tracking enabled." : "Webcam enabled. Motion fallback active; pose model unavailable.");
+    }
   } catch (error) {
     showToast("Webcam permission was blocked or unavailable. Rehearsal still works with typed answers.");
   }
@@ -2303,7 +3066,27 @@ async function createReport() {
     return;
   }
   await withLoading("report", async () => {
-    state.session.finalReport = generateReport(state.session);
+    const localReport = normalizeReport(generateReport(state.session), null);
+    const evidence = buildLiveEvidenceBundle(localReport);
+    state.session.evidenceBundle = evidence;
+    try {
+      const response = await backendJson(
+        "/api/live/report",
+        {
+          method: "POST",
+          body: JSON.stringify(liveReportPayload(evidence, localReport))
+        },
+        90000
+      );
+      state.session.reportWarnings = response.warnings || [];
+      state.session.finalReport = normalizeReport(response.report, evidence, response.warnings || []);
+      showToast(response.warnings?.length ? "Report generated with backend warnings." : "Evidence-based report ready.");
+    } catch (error) {
+      state.backendAvailable = false;
+      state.session.reportWarnings = ["Backend report generation failed; local fallback report was used."];
+      state.session.finalReport = normalizeReport(localReport, evidence, state.session.reportWarnings);
+      showToast("Backend unavailable; local report fallback used.");
+    }
     saveSession();
     go("report");
   });
@@ -2316,7 +3099,11 @@ function renderReport() {
   }
 
   if (!state.session.finalReport && (state.session.answers || []).filter((answer) => answer.followUpAnswer).length >= 5) {
-    state.session.finalReport = generateReport(state.session);
+    const localReport = generateReport(state.session);
+    const evidence = buildLiveEvidenceBundle(localReport);
+    state.session.evidenceBundle = evidence;
+    state.session.reportWarnings = ["Report was rebuilt locally from the saved browser session. Use Generate final report for backend evidence-file synthesis."];
+    state.session.finalReport = normalizeReport(localReport, evidence, state.session.reportWarnings);
     saveSession();
   }
 
@@ -2340,6 +3127,7 @@ function renderReport() {
             <div class="cm-report-actions">
               <button class="secondary-btn" id="copyReportBtn" type="button">Copy report</button>
               <button class="secondary-btn" id="exportReportBtn" type="button">Export JSON</button>
+              <button class="secondary-btn" id="exportEvidenceBtn" type="button">Export evidence</button>
               <button class="primary-btn cm-button-lift" id="restartBtn" type="button">Restart with same inputs</button>
             </div>
           </div>
@@ -2378,6 +3166,17 @@ function renderReport() {
         </div>
       </section>
 
+      ${
+        (report.reportWarnings || state.session.reportWarnings || []).length
+          ? `<section class="cm-section">
+              <div class="cm-alert cm-alert--soft">
+                <strong>Report note.</strong>
+                <span>${escapeHtml((report.reportWarnings || state.session.reportWarnings)[0])}</span>
+              </div>
+            </section>`
+          : ""
+      }
+
       <section class="cm-section">
         <div class="cm-section-head">
           <div>
@@ -2407,6 +3206,56 @@ function renderReport() {
             )
             .join("")}
         </div>
+      </section>
+
+      <section class="cm-section cm-report-columns">
+        <article class="cm-card">
+          <span class="cm-eyebrow">Body movement</span>
+          <h3>${escapeHtml(report.bodyMovement?.dominantClass || "Movement evidence")}</h3>
+          <p>${escapeHtml(report.bodyMovement?.summary || "No dominant Teachable Machine movement class was captured.")}</p>
+          <div class="cm-answer-metrics">
+            <div><strong>${formatMetric(report.bodyMovement?.bodyPositioningScore)}</strong><span>body score</span></div>
+            <div><strong>${formatPercent(report.bodyMovement?.cameraFacingPct)}</strong><span>camera-facing est.</span></div>
+            <div><strong>${formatPercent(report.bodyMovement?.handsVisiblePct)}</strong><span>hands visible</span></div>
+            <div><strong>${formatMetric(report.bodyMovement?.movementControlScore)}</strong><span>movement control</span></div>
+          </div>
+          <p class="cm-muted-copy">${escapeHtml(report.bodyMovement?.topRepeatedIssue || "Movement coaching uses observable body and Teachable Machine categories only.")}</p>
+        </article>
+        <article class="cm-card">
+          <span class="cm-eyebrow">Movement drill</span>
+          <h3>Next body rep</h3>
+          ${
+            Array.isArray(report.bodyMovement?.drills) && report.bodyMovement.drills.length
+              ? listMarkup(report.bodyMovement.drills)
+              : `<p>${escapeHtml(report.bodyMovement?.movementDrill || "Practice one intentional gesture per claim, then return hands to a visible neutral position.")}</p>`
+          }
+        </article>
+        <article class="cm-card">
+          <span class="cm-eyebrow">Evidence file</span>
+          <h3>Saved before synthesis</h3>
+          <p>The backend report is generated from a structured rehearsal evidence file, including transcript, scores, follow-ups, and body-event samples.</p>
+        </article>
+      </section>
+
+      <section class="cm-section">
+        <article class="cm-card">
+          <span class="cm-eyebrow">Tangible improvements</span>
+          <h3>What to change before the next rep</h3>
+          <div class="cm-answer-stack">
+            ${(report.tangibleImprovements || tangibleImprovementsFromEvidence(state.session.evidenceBundle, report.bodyMovement))
+              .map(
+                (item) => `
+                  <div class="cm-answer-card">
+                    <h3>${escapeHtml(item.area || "improvement")}</h3>
+                    <p><strong>Evidence:</strong> ${escapeHtml(item.currentEvidence || "No evidence supplied.")}</p>
+                    <p><strong>Change:</strong> ${escapeHtml(item.change || "Make the recommendation more specific.")}</p>
+                    <p><strong>Drill:</strong> ${escapeHtml(item.practiceDrill || "Practice the answer once slowly and once under time.")}</p>
+                  </div>
+                `
+              )
+              .join("")}
+          </div>
+        </article>
       </section>
 
       <section class="cm-section cm-report-columns">
@@ -2492,10 +3341,10 @@ function renderReport() {
             <div><strong>Typed</strong><span>fallback mode</span></div>
             ${
               report.deliveryMetrics.bodyMetrics
-                ? `<div><strong>${formatPercent(report.deliveryMetrics.bodyMetrics.poseVisiblePct)}</strong><span>pose visible</span></div>
-                   <div><strong>${formatMetric(report.deliveryMetrics.bodyMetrics.postureStability)}</strong><span>posture stability</span></div>
-                   <div><strong>${formatMetric(report.deliveryMetrics.bodyMetrics.gestureRatePerMin)}</strong><span>gestures/min</span></div>
-                   <div><strong>${formatPercent(report.deliveryMetrics.bodyMetrics.cameraEngagementProxyPct)}</strong><span>camera proxy</span></div>`
+                ? `<div><strong>${formatPercent(report.deliveryMetrics.bodyMetrics.faceVisiblePct)}</strong><span>face visible</span></div>
+                   <div><strong>${formatPercent(report.deliveryMetrics.bodyMetrics.cameraFacingPct)}</strong><span>camera-facing est.</span></div>
+                   <div><strong>${formatMetric(report.deliveryMetrics.bodyMetrics.postureAlignmentScore)}</strong><span>posture score</span></div>
+                   <div><strong>${formatPercent(report.deliveryMetrics.bodyMetrics.handsVisiblePct)}</strong><span>hands visible</span></div>`
                 : ""
             }
           </div>
@@ -2508,12 +3357,16 @@ function renderReport() {
 
   document.getElementById("copyReportBtn").addEventListener("click", copyReport);
   document.getElementById("exportReportBtn").addEventListener("click", exportReport);
+  document.getElementById("exportEvidenceBtn").addEventListener("click", exportEvidence);
   document.getElementById("restartBtn").addEventListener("click", () => {
     state.session.caseBrief = null;
     state.session.recommendationCritique = null;
     state.session.questions = [];
     state.session.answers = [];
+    state.session.bodyEvents = [];
+    state.session.evidenceBundle = null;
     state.session.finalReport = null;
+    state.session.reportWarnings = [];
     state.session.timerStartedAt = null;
     saveSession();
     go("setup");
@@ -2583,6 +3436,21 @@ function exportReport() {
   link.remove();
   URL.revokeObjectURL(url);
   showToast("Report exported.");
+}
+
+function exportEvidence() {
+  const evidence = state.session.evidenceBundle || buildLiveEvidenceBundle(state.session.finalReport || generateReport(state.session));
+  const payload = JSON.stringify(evidence, null, 2);
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "case-mirror-rehearsal-evidence.json";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast("Evidence exported.");
 }
 
 function clearSession() {

@@ -162,6 +162,33 @@ Response fields:
 - `follow_up_question`
 - `warnings`
 
+### `POST /api/live/report`
+
+Purpose:
+
+- persist a full live rehearsal evidence bundle
+- write `evidence.json`, `body_events.jsonl`, compatibility `gesture_events.jsonl`, and `report.json`
+- generate a tangible readiness report from saved transcript, answer scores, follow-ups, and body-positioning/Teachable movement metrics
+- fall back to deterministic evidence-specific reporting when the report model is unavailable
+
+Important request fields:
+
+- `session_id`
+- `evidence_bundle` using `live_evidence_v2`
+- `answers`
+- `body_events`
+- `body_summary`
+- `body_quality_warnings`
+- `body_metrics_version`
+- `gesture_events`
+- `gesture_summary`
+- `local_report`
+
+Response fields:
+
+- `report`
+- `warnings`
+
 ### `POST /api/live/deepgram-token`
 
 Purpose:
