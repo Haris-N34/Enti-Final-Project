@@ -18,6 +18,8 @@ Case Mirror is built around a practical case competition workflow:
 
 The backend also supports a deeper media-analysis pipeline for uploaded presentation videos and slide decks. That path adds transcript analysis, slide extraction, timestamped feedback, and observable delivery/body metrics with explicit safety limits.
 
+The current live rehearsal flow now also includes a browser-side Teachable Machine image model for gesture and upper-body movement classification. That model runs locally in the browser and feeds evidence such as open palms, neutral hands, pointing, arms crossed, hands too low, excessive movement, and one-hand emphasis into the final readiness report.
+
 ## Repository Structure
 
 ```text
@@ -26,6 +28,7 @@ The backend also supports a deeper media-analysis pipeline for uploaded presenta
 |  |- index.html
 |  |- app.js
 |  |- styles.css
+|  |- assets/teachable-image/
 |  `- assets/images/
 |
 |- casecoach/
@@ -64,6 +67,7 @@ Key frontend characteristics:
 - Local session persistence via `localStorage`
 - Static hosting friendly
 - Strong typed-answer fallback for demo reliability
+- Browser-side Teachable Machine gesture classification plus MediaPipe/body-motion sampling
 - Safety language embedded in the UI
 
 ## Backend Overview
@@ -130,10 +134,16 @@ See:
 
 Optional integrations currently referenced in the backend:
 
-- Qwen-compatible reasoning endpoint
+- Qwen-compatible reasoning endpoint for prep and answer grading
+- Groq-compatible endpoint for live report synthesis
 - Tavily for market-context research
 - Deepgram for live transcription fallback
-- MediaPipe/OpenCV for observable body metrics
+- MediaPipe/OpenCV for observable body metrics in the upload pipeline
+
+Browser-side live rehearsal also depends on:
+
+- Teachable Machine image model assets in `case-mirror/assets/teachable-image/`
+- `@teachablemachine/image` loaded in `case-mirror/index.html`
 
 ## Deployment Notes
 

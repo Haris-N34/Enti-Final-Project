@@ -1,15 +1,17 @@
 # CaseCoach Backend
 
-Backend-only MVP for Case Mirror video-model analysis.
+Backend for Case Mirror upload analysis and live rehearsal support.
 
 ## Runtime Requirements
 
 - Python 3.12. The package intentionally pins `>=3.12,<3.13` because current video/ML packages lag newer Python releases.
 - `ffmpeg` and `ffprobe` on `PATH`.
-- A remote OpenAI-compatible Qwen3-VL endpoint for model reasoning, configured with `QWEN_VL_BASE_URL` and `QWEN_VL_API_KEY`.
+- A remote OpenAI-compatible Qwen endpoint for live prep and answer grading, configured with `QWEN_VL_BASE_URL` and `QWEN_VL_API_KEY`.
+- Optional Groq-compatible endpoint for live report synthesis, configured with `GROQ_BASE_URL` and `GROQ_API_KEY`.
 
 The backend can still run without Qwen configuration, but model reasoning sections will return warnings and deterministic fallback feedback.
 Body posture tracking uses open-source MediaPipe Pose and OpenCV when installed. Without those packages, the backend still runs and returns a clear warning in the report.
+Teachable Machine is not hosted by the backend. The current live rehearsal flow loads that image model in the browser from `case-mirror/assets/teachable-image/`, then sends summarized `teachable_*` metrics to the backend in live grading and final report payloads.
 
 ## Quick Start
 
@@ -58,6 +60,11 @@ TAVILY_API_KEY=
 - `GET /api/transcript/{job_id}`
 - `GET /api/body-metrics/{job_id}`
 - `GET /api/export/json/{job_id}`
+- `POST /api/live/prepare`
+- `POST /api/live/grade-answer`
+- `POST /api/live/report`
+- `POST /api/live/deepgram-token`
+- `WS /api/live/deepgram-proxy`
 
 ## Safety Principle
 

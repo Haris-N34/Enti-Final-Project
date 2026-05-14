@@ -138,6 +138,7 @@ Purpose:
 
 - grade a single live answer
 - combine text, case context, slide text, and observable metrics
+- accept browser-side Teachable Machine gesture summaries alongside other delivery metrics
 - return an adaptive follow-up question
 
 Request fields:
@@ -222,7 +223,14 @@ Relevant environment variables are documented in:
 
 Key optional providers currently referenced:
 
-- Qwen-compatible reasoning endpoint
+- Qwen-compatible reasoning endpoint for prep and answer grading
+- Groq-compatible endpoint for live report synthesis
 - Tavily research API
 - Deepgram transcription
-- MediaPipe/OpenCV body-tracking stack
+- MediaPipe/OpenCV body-tracking stack for upload analysis
+
+Important browser-side live inputs that are not server-hosted providers:
+
+- Teachable Machine image model loaded from `case-mirror/assets/teachable-image/`
+- MediaPipe pose and face sampling in the browser
+- local body event aggregation in the frontend before `POST /api/live/report`
