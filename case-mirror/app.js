@@ -83,6 +83,7 @@ let teachableImageInFlight = false;
 let lastTeachableAt = 0;
 let lastTeachableResult = null;
 let answerInputVersion = 0;
+let lastRehearsalPromptKey = "";
 
 function createSession() {
   return {
@@ -2072,6 +2073,12 @@ function renderRehearsal() {
     ? `Follow-up reason: ${answer.followUp.reason}`
     : `${question.rationale} Criterion tested: ${question.criterionTested}.`;
   const progressPercent = Math.round((progress.index / 5) * 100);
+  const promptKey = `${progress.index}:${progress.phase}:${prompt}`;
+
+  if (lastRehearsalPromptKey && lastRehearsalPromptKey !== promptKey) {
+    stopTranscription(true);
+  }
+  lastRehearsalPromptKey = promptKey;
 
   app.innerHTML = shellMarkup(
     3,
@@ -2114,6 +2121,7 @@ function renderRehearsal() {
             <div class="cm-form-status">Practice feedback only. Optional camera metrics use observable posture and movement proxies. No emotion, personality, protected-trait, or official judging claims.</div>
             <div class="cm-form-action-group">
               <button class="secondary-btn" id="micBtn" type="button">Use microphone</button>
+              <button class="secondary-btn" id="skipAnswerBtn" type="button">${isFollowUp ? "Skip follow-up" : "Skip question"}</button>
               <button class="primary-btn cm-button-lift cm-cta-qa" id="saveAnswerBtn" type="button">${isFollowUp ? "Save follow-up" : "Save and continue"}</button>
             </div>
           </div>
@@ -2158,8 +2166,10 @@ function renderRehearsal() {
   if (answerInput) answerInput.value = "";
   answerInput?.addEventListener("input", updateLiveMetrics);
   document.getElementById("saveAnswerBtn").addEventListener("click", () => saveRehearsalAnswer(progress, question));
+  document.getElementById("skipAnswerBtn").addEventListener("click", () => skipRehearsalAnswer(progress, question));
   document.getElementById("micBtn").addEventListener("click", toggleMic);
   document.getElementById("webcamBtn").addEventListener("click", enableWebcam);
+  resetAnswerInput();
   if (state.webcamStream) {
     setupPoseTracking();
   }
@@ -2297,6 +2307,45 @@ async function saveRehearsalAnswer(progress, question) {
   render();
 }
 
+function skipRehearsalAnswer(progress, question) {
+  stopTranscription(true);
+  const skippedMetrics = currentAnswerMetrics("", 1);
+
+  if (progress.phase === "followup") {
+    state.session.answers[progress.index].followUpAnswer = "Skipped.";
+    state.session.answers[progress.index].followUpMetrics = skippedMetrics;
+    state.session.timerStartedAt = Date.now();
+    saveSession();
+    resetAnswerInput();
+    resetPoseSamples();
+    showToast("Follow-up skipped.");
+    render();
+    return;
+  }
+
+  state.session.answers[progress.index] = {
+    id: createId(),
+    questionId: question.id,
+    questionNumber: question.questionNumber,
+    questionText: question.questionText,
+    rationale: question.rationale,
+    criterionTested: question.criterionTested,
+    answerText: "Skipped.",
+    inputMode: "skipped",
+    durationSeconds: 1,
+    metrics: skippedMetrics,
+    backendGrade: null,
+    followUp: null,
+    followUpAnswer: "Skipped."
+  };
+  state.session.timerStartedAt = Date.now();
+  saveSession();
+  resetAnswerInput();
+  resetPoseSamples();
+  showToast("Question skipped.");
+  render();
+}
+
 function toggleMic() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -2326,10 +2375,12 @@ function toggleMic() {
     }
   };
   recognition.onerror = () => {
+    state.recognition = null;
     state.micActive = false;
     showToast("Microphone transcription failed. Typed answers still work.");
   };
   recognition.onend = () => {
+    state.recognition = null;
     state.micActive = false;
   };
   state.recognition = recognition;
