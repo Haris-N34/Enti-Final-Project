@@ -5,6 +5,7 @@
 Case Mirror / CaseCoach is split into a static frontend and a FastAPI backend.
 
 - The frontend handles the user workflow, local session state, and browser capabilities such as microphone and webcam preview.
+- The frontend also runs the live Teachable Machine classifier and browser-side body sampling during rehearsal.
 - The backend handles file upload, analysis jobs, report artifacts, live rehearsal prep, and model-provider integration.
 
 This split is appropriate for the project because the user-facing flow must stay lightweight and demo-friendly, while the heavier media and model work can remain server-side.
@@ -19,6 +20,7 @@ Core files:
 - `styles.css`
 - `app.js`
 - `assets/images/`
+- `assets/teachable-image/`
 
 Responsibilities:
 
@@ -29,6 +31,9 @@ Responsibilities:
 - display generated brief, rehearsal prompts, and final report
 - provide typed answer fallback
 - optionally use browser microphone and webcam APIs
+- load the Teachable Machine image classifier in the browser
+- combine Teachable Machine classes with MediaPipe pose, face visibility, and frame-motion sampling
+- write `bodyEvents` evidence into the local session for final report synthesis
 - call live backend endpoints when available
 
 ### Backend: `casecoach/backend/`
@@ -79,8 +84,11 @@ This path is optimized for demo speed and reliability. Typed answers remain the 
 
 1. Frontend sends current case materials to `POST /api/live/prepare`.
 2. Backend returns market context, prep bullets, and likely judge questions.
-3. During answer rehearsal, frontend sends a question, answer, and observable metrics to `POST /api/live/grade-answer`.
-4. Backend returns content, clarity, evidence, and delivery feedback plus an adaptive follow-up question.
+3. When the webcam is enabled, the frontend loads the local Teachable Machine model from `case-mirror/assets/teachable-image/` and samples gesture classes in the browser.
+4. The frontend combines Teachable Machine outputs with MediaPipe pose, face visibility, and simple frame-difference motion signals into `bodyEvents` and `body_summary`.
+5. During answer rehearsal, frontend sends a question, answer, and observable metrics to `POST /api/live/grade-answer`.
+6. Backend returns content, clarity, evidence, and delivery feedback plus an adaptive follow-up question.
+7. At the end of the session, the frontend sends the full evidence bundle to `POST /api/live/report`, where report synthesis can use both answer text and browser-captured body evidence.
 
 ## Data and State
 
@@ -100,6 +108,7 @@ The backend stores:
 - job metadata in SQLite
 - uploaded assets and generated artifacts on disk
 - structured report outputs as JSON files
+- live rehearsal evidence bundles that include Teachable Machine-derived body event summaries
 
 This is intentionally practical for an MVP and easier to debug than a distributed or cloud-heavy setup.
 
@@ -110,7 +119,7 @@ The architecture explicitly separates observable metrics from interpretation.
 Examples:
 
 - delivery timing and filler counts are acceptable
-- body posture stability proxies are acceptable when framed narrowly
+- body posture stability and gesture-class proxies are acceptable when framed narrowly
 - winner prediction, emotion detection, personality scoring, and protected-trait inference are not acceptable
 
 These rules are enforced through prompt wording, output shaping, and safety tests in the backend.

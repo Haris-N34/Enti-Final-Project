@@ -1,6 +1,8 @@
 # API Keys And Model Access
 
-The backend can run without remote model keys, but Qwen reasoning will be skipped until these values are configured.
+The backend can run without remote model keys, but Qwen reasoning and Groq live report synthesis will be skipped until these values are configured.
+
+Important: the project's Teachable Machine model does not use an API key. It is a browser-loaded image model stored directly in the frontend at `case-mirror/assets/teachable-image/`. The backend only receives the summarized `teachable_*` outputs from the browser.
 
 ## Qwen3-VL / Qwen3-Omni through Alibaba Cloud Model Studio
 
@@ -30,6 +32,20 @@ For the current live rehearsal setup, use:
 
 ```bash
 QWEN_VL_MODEL=qwen3.6-plus
+```
+
+## Groq for Live Report Synthesis
+
+Use this when you want the backend to synthesize the final live rehearsal report with a Groq-hosted OpenAI-compatible model.
+
+- API docs: https://console.groq.com/docs/overview
+
+Set:
+
+```bash
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_API_KEY=your_groq_key_here
+GROQ_MODEL=gpt-oss-120b
 ```
 
 Optional market research uses Tavily:

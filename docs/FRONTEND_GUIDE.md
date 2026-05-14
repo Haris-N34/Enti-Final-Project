@@ -12,6 +12,8 @@ Main files:
 
 This approach keeps the project lightweight, easy to host, and easy to demo without a frontend build system.
 
+The live rehearsal path is richer than a typical static app: it loads a browser-side Teachable Machine image model from `case-mirror/assets/teachable-image/` and combines that with webcam-derived pose and motion metrics.
+
 ## Frontend Responsibilities
 
 The frontend is responsible for:
@@ -23,6 +25,8 @@ The frontend is responsible for:
 - handling judge Q&A rehearsal
 - showing the final readiness report
 - managing browser microphone/webcam affordances when available
+- loading and sampling the Teachable Machine gesture model during rehearsal
+- persisting `bodyEvents` and `body_summary` evidence for the final report
 
 ## Current Page Flow
 
@@ -122,7 +126,43 @@ The frontend attempts browser speech recognition when available. If recognition 
 
 ### Webcam
 
-The webcam is an optional preview only. It supports presentation rehearsal realism but should never be required for the core flow.
+The webcam is optional, but it now does more than preview. When enabled, the frontend tries to run:
+
+- Teachable Machine image classification from local model assets
+- MediaPipe pose tracking when available
+- face visibility and camera-facing proxies
+- simple frame-motion sampling as a fallback signal
+
+The app still needs to work without webcam access. Typed answers remain the required fallback.
+
+## Teachable Machine Flow
+
+The frontend loads `@teachablemachine/image` from a CDN in `case-mirror/index.html` and points it at:
+
+- `case-mirror/assets/teachable-image/model.json`
+- `case-mirror/assets/teachable-image/metadata.json`
+- `case-mirror/assets/teachable-image/weights.bin`
+
+`app.js` normalizes the model outputs into coaching-friendly classes such as:
+
+- Neutral hands
+- Open palms
+- One-hand emphasis
+- Pointing
+- Arms crossed
+- Hands too low / hidden
+- Excessive movement
+
+Those classes are grouped into `good`, `caution`, and `bad` categories, then summarized into fields such as:
+
+- `teachableTopClass`
+- `teachableBehaviorScore`
+- `teachableGoodPct`
+- `teachableCautionPct`
+- `teachableBadPct`
+- `teachableCategoryPcts`
+
+The resulting values are merged with pose and motion sampling before being written into `state.session.bodyEvents`.
 
 ## Styling Notes
 
@@ -143,3 +183,4 @@ Visual direction in the current app:
 - Avoid adding a build step unless the project clearly outgrows static delivery.
 - Keep safety wording visible wherever metrics could be misread as judgment.
 - Prefer progressive enhancement over hard dependencies on microphone or webcam access.
+- If the Teachable Machine asset folder changes, keep `model.json`, `metadata.json`, and `weights.bin` together and verify `TEACHABLE_IMAGE_MODEL_URL` still resolves correctly.
