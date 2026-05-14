@@ -1074,9 +1074,6 @@ function renderAuth() {
             <li>Readiness report after practice</li>
             <li>Local demo profile on this laptop</li>
           </ul>
-          <p>
-            This onboarding is a local demo flow for the static app. Production login would connect to a secure backend auth provider.
-          </p>
         </aside>
       </section>
     `,
