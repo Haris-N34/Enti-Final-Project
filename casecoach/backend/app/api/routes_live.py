@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
+from app.extractors.groq_client import GroqClient
 from app.extractors.tavily_client import TavilyClient
 from app.extractors.qwen_vl_client import QwenVLClient
 from app.scoring.delivery_scores import count_fillers, word_count
@@ -42,6 +45,17 @@ class LiveMetrics(BaseModel):
     gesture_rate_per_min: float | None = None
     motion_level: float | None = None
     camera_engagement_proxy_pct: float | None = None
+    vision_provider: str | None = None
+    teachable_top_class: str | None = None
+    teachable_top_confidence_pct: float | None = None
+    teachable_predictions: list[dict[str, Any]] = Field(default_factory=list)
+    teachable_behavior_score: float | None = None
+    teachable_good_pct: float | None = None
+    teachable_bad_pct: float | None = None
+    teachable_caution_pct: float | None = None
+    teachable_dominant_class: str | None = None
+    teachable_dominant_meaning: str | None = None
+    teachable_category_pcts: dict[str, float] = Field(default_factory=dict)
     audio_energy_avg: float | None = None
     audio_energy_variation: float | None = None
     silence_pct: float | None = None
@@ -66,6 +80,27 @@ class LiveGradeResponse(BaseModel):
     metrics: dict[str, Any]
     feedback: list[str]
     follow_up_question: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class LiveReportRequest(BaseModel):
+    session_id: str = ""
+    company_name: str = ""
+    case_prompt: str = ""
+    judging_criteria: str = ""
+    team_recommendation: str = ""
+    slide_outline: str = ""
+    team_constraints: str = ""
+    brief: dict[str, Any] = Field(default_factory=dict)
+    critique: dict[str, Any] = Field(default_factory=dict)
+    answers: list[dict[str, Any]] = Field(default_factory=list)
+    gesture_events: list[dict[str, Any]] = Field(default_factory=list)
+    gesture_summary: dict[str, Any] = Field(default_factory=dict)
+    local_report: dict[str, Any] = Field(default_factory=dict)
+
+
+class LiveReportResponse(BaseModel):
+    report: dict[str, Any]
     warnings: list[str] = Field(default_factory=list)
 
 
@@ -204,6 +239,40 @@ async def grade_live_answer(payload: LiveGradeRequest) -> LiveGradeResponse:
     except Exception as exc:
         fallback.warnings.append(f"Model response could not be parsed; used fallback. {exc}")
         return fallback
+
+
+@router.post("/report", response_model=LiveReportResponse)
+async def generate_live_report(payload: LiveReportRequest) -> LiveReportResponse:
+    warnings: list[str] = []
+    fallback = payload.local_report if isinstance(payload.local_report, dict) and payload.local_report else _fallback_report(payload)
+    settings = get_settings()
+    log_warning = _write_gesture_events_log(payload, settings.data_dir)
+    if log_warning:
+        warnings.append(log_warning)
+
+    client = GroqClient(settings.groq_base_url, settings.groq_api_key, settings.groq_model)
+    response, warning = await client.complete_json(
+        prompt=_report_prompt(payload),
+        system_prompt=(
+            "You are a strict but helpful university case competition coach. "
+            "Return JSON only. Use observable metrics and transcript evidence. "
+            "Do not infer emotion, personality, protected traits, or official judging outcomes."
+        ),
+    )
+    if warning:
+        warnings.append(warning)
+        return LiveReportResponse(report=fallback, warnings=warnings)
+    if not isinstance(response, dict):
+        warnings.append("Groq response was not a JSON object; used fallback report.")
+        return LiveReportResponse(report=fallback, warnings=warnings)
+
+    report = _coerce_report_shape(response, fallback)
+    try:
+        _assert_report_safety(report)
+    except ValueError as exc:
+        warnings.append(f"{exc}; used fallback report.")
+        return LiveReportResponse(report=fallback, warnings=warnings)
+    return LiveReportResponse(report=report, warnings=warnings)
 
 
 def _prepare_prompt(payload: LivePrepareRequest, search_results: list[dict[str, str]]) -> str:
@@ -388,6 +457,14 @@ def _delivery_score(metrics: LiveMetrics, wpm: float, fillers: int) -> int:
         score -= 6
     if metrics.audio_energy_variation is not None and metrics.audio_energy_variation < 0.01:
         score -= 4
+    if metrics.teachable_behavior_score is not None:
+        score += int((metrics.teachable_behavior_score - 70) * 0.2)
+    if metrics.teachable_bad_pct is not None and metrics.teachable_bad_pct > 30:
+        score -= int((metrics.teachable_bad_pct - 30) * 0.22)
+    if metrics.teachable_good_pct is not None and metrics.teachable_good_pct > 35:
+        score += int((metrics.teachable_good_pct - 35) * 0.08)
+    if metrics.teachable_category_pcts.get("Pointing", 0.0) > 32:
+        score -= int((metrics.teachable_category_pcts["Pointing"] - 32) * 0.2)
     return max(20, min(95, score))
 
 
@@ -404,7 +481,160 @@ def _delivery_feedback(metrics: LiveMetrics, wpm: float, fillers: int) -> str:
         return "There was a lot of low-audio time; practice the transition into the answer before restarting."
     if metrics.audio_energy_variation is not None and metrics.audio_energy_variation < 0.01:
         return "Voice energy variation was low; emphasize the recommendation and key metric more clearly."
+    if metrics.teachable_behavior_score is not None and metrics.teachable_behavior_score < 55:
+        return "Gesture behavior score was low; keep hands visible, avoid crossed arms, and reduce extra motion."
+    if metrics.teachable_dominant_class == "Hands too low / hidden":
+        return "Hands were hidden often; bring your hands into frame during key points."
+    if metrics.teachable_dominant_class == "Arms crossed":
+        return "Arms were crossed frequently; use an open posture when giving the recommendation."
+    if metrics.teachable_dominant_class == "Excessive movement":
+        return "Movement was high; anchor your hands before and after each core claim."
+    if metrics.teachable_dominant_class == "Pointing" and metrics.teachable_category_pcts.get("Pointing", 0.0) > 32:
+        return "Pointing was overused; switch to open palms or neutral hands between emphasis moments."
+    if metrics.teachable_good_pct is not None and metrics.teachable_good_pct >= 45:
+        return "Gesture mix looked strong overall; keep the same open/neutral hand balance while tightening evidence."
     return "Delivery metrics are usable; focus on tighter evidence and risk handling."
+
+
+def _report_prompt(payload: LiveReportRequest) -> str:
+    gesture_events = payload.gesture_events[-1500:]
+    answers = payload.answers[:5]
+    return f"""
+Return JSON only with this exact top-level shape:
+{{
+  "generatedAt": "ISO timestamp",
+  "scores": {{
+    "overallReadinessScore": 0-100 int,
+    "recommendationStrengthScore": 0-100 int,
+    "qnaReadinessScore": 0-100 int,
+    "presentationClarityScore": 0-100 int
+  }},
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "missedCriteria": ["..."],
+  "weakAssumptions": ["..."],
+  "likelyJudgeConcerns": ["..."],
+  "missingMetricsOrEvidence": ["..."],
+  "bestAnswer": {{"questionNumber": int, "summary": "...", "score": int}},
+  "weakestAnswer": {{"questionNumber": int, "summary": "...", "score": int}},
+  "improvedAnswers": [{{"question": "...", "suggestion": "..."}}],
+  "nextPracticePlan": ["..."],
+  "deliveryMetrics": {{
+    "totalFillerWords": int,
+    "averageWordsPerMinute": int,
+    "bodyMetrics": object|null,
+    "note": "..."
+  }}
+}}
+
+Constraints:
+- Ground report in supplied transcript answers and gesture/body observations only.
+- Do not infer emotion, personality, confidence, protected traits, winner likelihood, or official judge decisions.
+- Keep language practical and actionable for rehearsal.
+
+Company: {payload.company_name}
+Case prompt: {payload.case_prompt[:4000]}
+Judging criteria: {payload.judging_criteria[:4000]}
+Team recommendation: {payload.team_recommendation[:4000]}
+Slide outline: {payload.slide_outline[:6000]}
+Team constraints: {payload.team_constraints[:2000]}
+
+Brief context:
+{json.dumps(payload.brief, ensure_ascii=False)[:12000]}
+
+Critique context:
+{json.dumps(payload.critique, ensure_ascii=False)[:12000]}
+
+Answers:
+{json.dumps(answers, ensure_ascii=False)[:20000]}
+
+Gesture summary:
+{json.dumps(payload.gesture_summary, ensure_ascii=False)[:12000]}
+
+Gesture events (recent):
+{json.dumps(gesture_events, ensure_ascii=False)[:30000]}
+"""
+
+
+def _write_gesture_events_log(payload: LiveReportRequest, data_dir: Path) -> str | None:
+    if not payload.gesture_events:
+        return "No gesture events were captured for this report."
+    try:
+        log_dir = data_dir / "gesture_logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        safe_session_id = _safe_session_id(payload.session_id)
+        log_path = log_dir / f"{safe_session_id}.jsonl"
+        summary_path = log_dir / f"{safe_session_id}.summary.json"
+        with log_path.open("w", encoding="utf-8") as handle:
+            for item in payload.gesture_events:
+                handle.write(json.dumps(item, ensure_ascii=False) + "\n")
+        summary = {
+            "session_id": payload.session_id,
+            "company_name": payload.company_name,
+            "gesture_summary": payload.gesture_summary,
+            "event_count": len(payload.gesture_events),
+        }
+        summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        return None
+    except OSError as exc:
+        return f"Could not persist gesture event log file: {exc}"
+
+
+def _safe_session_id(value: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9._-]", "_", (value or "").strip())
+    return cleaned or "session"
+
+
+def _fallback_report(payload: LiveReportRequest) -> dict[str, Any]:
+    local = payload.local_report if isinstance(payload.local_report, dict) else {}
+    if local:
+        return local
+    return {
+        "generatedAt": "",
+        "scores": {
+            "overallReadinessScore": 60,
+            "recommendationStrengthScore": 60,
+            "qnaReadinessScore": 60,
+            "presentationClarityScore": 60,
+        },
+        "strengths": ["Complete rehearsal transcript was available for report synthesis."],
+        "weaknesses": ["Model-based report generation was unavailable for this run."],
+        "missedCriteria": ["Report fallback was used; review rubric mapping manually."],
+        "weakAssumptions": [],
+        "likelyJudgeConcerns": [],
+        "missingMetricsOrEvidence": [],
+        "bestAnswer": {"questionNumber": 1, "summary": "No model report summary available.", "score": 60},
+        "weakestAnswer": {"questionNumber": 1, "summary": "No model report summary available.", "score": 60},
+        "improvedAnswers": [{"question": "Fallback", "suggestion": "Regenerate report when model access is configured."}],
+        "nextPracticePlan": ["Regenerate report after configuring Groq and rerun rehearsal."],
+        "deliveryMetrics": {"totalFillerWords": 0, "averageWordsPerMinute": 0, "bodyMetrics": None, "note": "Fallback report."},
+    }
+
+
+def _coerce_report_shape(candidate: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
+    merged = {**fallback, **candidate}
+    fallback_scores = fallback.get("scores") if isinstance(fallback.get("scores"), dict) else {}
+    candidate_scores = candidate.get("scores") if isinstance(candidate.get("scores"), dict) else {}
+    merged["scores"] = {**fallback_scores, **candidate_scores}
+    for key in (
+        "strengths",
+        "weaknesses",
+        "missedCriteria",
+        "weakAssumptions",
+        "likelyJudgeConcerns",
+        "missingMetricsOrEvidence",
+        "nextPracticePlan",
+    ):
+        merged[key] = _coerce_strings(merged.get(key), _coerce_strings(fallback.get(key), []))
+    if not isinstance(merged.get("improvedAnswers"), list) or not merged["improvedAnswers"]:
+        merged["improvedAnswers"] = fallback.get("improvedAnswers", [])
+    if not isinstance(merged.get("bestAnswer"), dict):
+        merged["bestAnswer"] = fallback.get("bestAnswer", {})
+    if not isinstance(merged.get("weakestAnswer"), dict):
+        merged["weakestAnswer"] = fallback.get("weakestAnswer", {})
+    if not isinstance(merged.get("deliveryMetrics"), dict):
+        merged["deliveryMetrics"] = fallback.get("deliveryMetrics", {})
+    return merged
 
 
 def _coerce_strings(value: object, fallback: list[str]) -> list[str]:
@@ -438,3 +668,22 @@ def _assert_live_safety(result: LiveGradeResponse) -> None:
     for phrase in banned:
         if phrase in text:
             raise ValueError(f"Unsafe live feedback language detected: {phrase}")
+
+
+def _assert_report_safety(report: dict[str, Any]) -> None:
+    text = json.dumps(report).lower()
+    banned = [
+        "looked nervous",
+        "nervous",
+        "personality",
+        "confidence",
+        "authority",
+        "professionalism",
+        "unprofessional",
+        "protected trait",
+        "will win",
+        "winner",
+    ]
+    for phrase in banned:
+        if phrase in text:
+            raise ValueError(f"Unsafe report language detected: {phrase}")

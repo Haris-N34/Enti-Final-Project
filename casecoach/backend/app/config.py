@@ -16,6 +16,9 @@ class Settings:
     qwen_omni_base_url: str
     qwen_omni_api_key: str
     qwen_omni_model: str
+    groq_base_url: str
+    groq_api_key: str
+    groq_model: str
     tavily_api_key: str
     deepgram_api_key: str
     asr_provider: str
@@ -53,6 +56,9 @@ def get_settings() -> Settings:
         qwen_omni_base_url=os.getenv("QWEN_OMNI_BASE_URL", ""),
         qwen_omni_api_key=os.getenv("QWEN_OMNI_API_KEY", ""),
         qwen_omni_model=os.getenv("QWEN_OMNI_MODEL", "Qwen/Qwen3-Omni-30B-A3B-Thinking"),
+        groq_base_url=os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+        groq_api_key=os.getenv("GROQ_API_KEY", ""),
+        groq_model=os.getenv("GROQ_MODEL", "gpt-oss-120b"),
         tavily_api_key=os.getenv("TAVILY_API_KEY", ""),
         deepgram_api_key=os.getenv("DEEPGRAM_API_KEY", ""),
         asr_provider=os.getenv("ASR_PROVIDER", "faster_whisper"),
@@ -71,4 +77,5 @@ def _load_dotenv(path: Path) -> None:
         key, value = line.split("=", 1)
         key = key.strip()
         value = value.strip().strip('"').strip("'")
-        os.environ.setdefault(key, value)
+        if not os.environ.get(key):
+            os.environ[key] = value
