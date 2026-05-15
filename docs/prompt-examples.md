@@ -62,9 +62,11 @@ Add screenshots for:
 
 Do not include screenshots of raw code in the blog post unless the instructor explicitly permits it. Prefer prompt and app UI screenshots.
 
-## Screenshot Evidence
+## Pending Screenshot Evidence
 
-| Prompt Area | Screenshot | What It Shows |
+The screenshot filenames below are evidence slots to fill when the team adds the actual image files under `docs/images/`. Do not cite them as included evidence until the files exist in the repository.
+
+| Prompt Area | Planned Screenshot File | What It Should Show |
 |---|---|---|
 | Requirements engineering | `docs/images/prompt-requirements.png` | AI helped turn the business idea into requirements and user stories |
 | Specialized coding environment | `docs/images/ai-coding-session-1.png` | AI coding tool reviewed and edited repository files |

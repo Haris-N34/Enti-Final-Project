@@ -1,133 +1,115 @@
 # Testing And QA
 
-## Automated Backend Tests
+Latest QA pass: May 15, 2026.
 
-Run from `casecoach/backend`:
+Environment used for this pass:
 
-```bash
-.venv/bin/python -m pytest -q
-```
+| Item | Value |
+|---|---|
+| Machine | Local macOS development machine |
+| OS | macOS 26.3.1, build 25D2128 |
+| Browser | Codex in-app browser against local frontend |
+| Frontend Python | Python 3.14.3 for `serve_case_mirror.py` |
+| Backend Python | Python 3.12.13 from `casecoach/backend/.venv` |
+| Node | v22.22.1 |
+| Frontend URL | `http://127.0.0.1:4173/case-mirror/` |
+| Backend URL | `http://127.0.0.1:8000` |
+| Deployed frontend smoke URL | `https://enti-final-project.vercel.app/` |
 
-Latest local audit result:
+## Command Results
 
-```text
-18 passed
-```
+Run from the repository root unless noted.
 
-Covered areas include:
+| Check | Command | Result | Output |
+|---|---|---|---|
+| Frontend syntax | `node --check case-mirror/app.js` | PASS | No output; exit code 0 |
+| Python helper syntax | `python3 -m py_compile serve_case_mirror.py` | PASS | No output; exit code 0 |
+| Backend tests | `cd casecoach/backend && .venv/bin/python -m pytest -q` | PASS | `18 passed in 0.13s` |
+| Local frontend root | `curl -i http://127.0.0.1:4173/` | PASS | Returned `HTTP/1.0 200 OK` and `Cache-Control: no-store` |
+| Local frontend app path | `curl -i http://127.0.0.1:4173/case-mirror/` | PASS | Returned `HTTP/1.0 200 OK` |
+| Backend health | `curl -i http://127.0.0.1:8000/health` | PASS | Returned `HTTP/1.1 200 OK` and `{"ok":true}` |
+| Deployed frontend root | `curl -I https://enti-final-project.vercel.app/` | PASS | Returned `HTTP/2 200` |
+| Markdown table audit | Local script over `README.md` and `docs/*.md` | PASS | `potential table issues: 0` |
 
-- body tracking metrics
-- delivery scoring
-- upload ingest validation
-- job storage
-- live report evidence handling
-- Qwen client behavior
-- safety language constraints
-
-## Local Run Smoke Test
-
-Start backend:
+Backend and frontend servers were started locally with:
 
 ```bash
 cd casecoach/backend
 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Check backend:
-
-```bash
-curl http://localhost:8000/health
-```
-
-Expected:
-
-```json
-{"ok":true}
-```
-
-Start frontend:
-
 ```bash
 python3 serve_case_mirror.py
 ```
 
-Open:
+## Backend API Smoke Test
 
-```text
-http://localhost:4173/
-```
+The live API was exercised with sample EcoRide case data.
 
-## Manual Demo QA Checklist
+| Endpoint | Result | Notes |
+|---|---|---|
+| `POST /api/live/prepare` | PASS | Returned `likely_judge_questions`, `market_context`, `market_sources`, `slide_summary`, and `warnings`. Warnings were substantive model notes about missing financial and operational evidence, not transport failures. |
+| `POST /api/live/grade-answer` | PASS with safety fallback | Returned content, clarity, evidence, and delivery scores. The model response triggered the safety fallback because unsupported confidence language was detected, so deterministic grading was used. |
+| `POST /api/live/report` | PASS | Returned a shaped report with score fields and no warnings in the API smoke test. |
 
-Complete before final video and presentation:
+## Browser Demo Flow
 
-- Landing page loads from `http://localhost:4173/`.
-- Root page redirects to `case-mirror/`.
-- Setup form accepts case prompt, rubric, recommendation, and optional context.
-- Brief generation works with backend available.
-- Brief generation falls back gracefully if backend is unavailable.
-- Rehearsal page shows judge-style question.
-- Typed answer can be saved and graded.
-- Follow-up question appears when appropriate.
-- Skip question and skip follow-up controls work.
-- Final report generates.
-- Clear session works.
-- Copy/export report works if used in demo.
-- Webcam denied state does not block typed rehearsal.
-- Microphone denied state does not block typed rehearsal.
-- Teachable Machine model loads when camera is enabled and internet/CDN access is available.
-- App remains usable on a laptop presentation resolution.
+The local app was tested in the Codex in-app browser at `http://127.0.0.1:4173/case-mirror/`.
 
-## Known Test Gaps
+| Flow Step | Result | Evidence From Manual Browser Check |
+|---|---|---|
+| Landing page | PASS | Page loaded and showed Case Mirror positioning, local profile link, start controls, and sample-case entry point. |
+| Local profile | PASS | Created a local demo profile with name and email. |
+| Load sample case | PASS | Sample EcoRide case, rubric, recommendation, industry context, constraints, and slide outline populated the setup form. |
+| Setup validation path | PASS | Required setup fields were present and filled before brief generation. |
+| Brief generation | PASS | Backend-generated brief loaded with problem summary, market pressure points, difficult questions, judge priorities, strengths, gaps, assumptions, and risks. |
+| Q&A rehearsal | PASS | Rehearsal page loaded with `Question 1 of 5`, typed answer box, skip controls, microphone button, and optional camera panel. |
+| Typed answer | PASS | A typed answer saved successfully and was graded by the backend path. |
+| Follow-up | PASS | One adaptive follow-up appeared, the answer box cleared for the follow-up, and the follow-up answer saved. |
+| Skip question | PASS | Questions 2 through 5 were skipped successfully using the skip button. |
+| Final report | PASS | Backend-generated report loaded with scores, strengths, risks, tangible improvements, body-movement notice, weak criteria, weak assumptions, missing metrics, best answer, weakest answer, and improved answer suggestions. |
+| Camera fallback | PASS with limitation | The full typed rehearsal and report flow completed without enabling camera preview. The report correctly stated that no webcam body samples were captured. Explicit OS/browser camera-denial permission prompts were not re-tested in this automated pass. |
+| Microphone fallback | PASS with limitation | The full typed rehearsal and report flow completed without using microphone transcription. Explicit OS/browser microphone-denial permission prompts were not re-tested in this automated pass. |
 
-- No automated frontend browser tests yet.
-- Full webcam/microphone behavior depends on browser permissions.
-- Live model-provider paths require valid API keys.
-- Deployed frontend works, but the backend is local-only for this MVP.
-- Vercel serves the static app at `/`; `/case-mirror/` is not the deployed route because `case-mirror/` is configured as the output directory.
+## Evidence File Check
 
-## QA Evidence
+The backend wrote live rehearsal evidence artifacts under `casecoach/backend/data/live_sessions/` during local/API smoke tests. The generated files include:
 
-| Test | Browser / Environment | Date | Result | Notes |
-|---|---|---|---|---|
-| Backend automated tests | Python 3.12.5, local `.venv` | May 15, 2026 | PASS | `18 passed in 0.18s` |
-| Frontend syntax check | Node `--check case-mirror/app.js` | May 15, 2026 | PASS | No syntax errors |
-| Python helper syntax check | `python3 -m py_compile serve_case_mirror.py` | May 15, 2026 | PASS | No syntax errors |
-| Local frontend run | `http://127.0.0.1:4173/` | May 15, 2026 | PASS | Returned `HTTP/1.0 200 OK` |
-| Backend health check | `http://127.0.0.1:8000/health` | May 15, 2026 | PASS | Returned `{"ok":true}` |
-| Live prepare endpoint | `POST /api/live/prepare` | May 15, 2026 | PASS with fallback | Returned judge questions and warnings for missing optional API keys |
-| Live answer grading endpoint | `POST /api/live/grade-answer` | May 15, 2026 | PASS with fallback | Returned scores, feedback, and follow-up question |
-| Deployed frontend root | `https://enti-final-project.vercel.app/` | May 15, 2026 | PASS | Returned `HTTP/2 200` |
-| Deployed frontend assets | `/app.js`, `/styles.css` | May 15, 2026 | PASS | Both assets returned `HTTP/2 200` |
-| Browser demo flow | Deployed frontend in browser | May 15, 2026 | PASS | Completed local profile, setup, brief, Q&A, and report flow |
-| Camera denied fallback | Browser demo flow without camera | May 15, 2026 | PASS | Typed-answer path remained usable without camera |
+| Artifact | Purpose |
+|---|---|
+| `evidence.json` | Normalized rehearsal inputs, answers, scores, and body evidence summary before report synthesis |
+| `body_events.jsonl` | Raw timestamped body/pose/Teachable observations when captured |
+| `gesture_events.jsonl` | Compatibility alias for older report paths |
+| `report.json` | Final backend-generated report artifact |
 
-## Final Pre-Submission QA
+These runtime data files are local artifacts and are not part of the submitted source evidence unless intentionally exported.
 
-Run this checklist immediately before recording the walkthrough video,
-presenting, or submitting the D2L deliverable.
+## Known Limitations
 
-| Test | Browser / Environment | Date | Result | Notes |
-|---|---|---|---|---|
-| Backend automated tests | Python 3.12.5, local `.venv` | May 15, 2026 | PASS | `.venv/bin/python -m pytest -q` returned `18 passed` |
-| Frontend syntax check | Node `--check case-mirror/app.js` | May 15, 2026 | PASS | No syntax errors |
-| Python helper syntax check | `python3 -m py_compile serve_case_mirror.py` | May 15, 2026 | PASS | No syntax errors |
-| Local backend health check | Local FastAPI backend | May 15, 2026 | PASS | `curl http://localhost:8000/health` returned `{"ok":true}` |
-| Deployed frontend smoke check | Vercel static frontend | May 15, 2026 | PASS | `curl -I https://enti-final-project.vercel.app/` returned `HTTP/2 200` |
-| Risky copy scan | Repository text search | May 15, 2026 | PASS | No leftover unsupported traction strings or merge markers found |
+| Area | Limitation |
+|---|---|
+| Deployed frontend | The deployed static frontend is the safest public demo entry point. The backend is local-only for this MVP unless a separate backend host is configured and verified. |
+| Live model providers | Remote model behavior depends on valid API keys and provider availability. The app has deterministic fallback paths for grading/reporting when model output is unavailable or unsafe. |
+| Camera and microphone | Typed-answer rehearsal is the reliable demo path. Webcam, Teachable Machine, and microphone features depend on browser permissions, lighting, camera availability, CDN/model loading, and local device support. |
+| Customer discovery evidence | Real interview/customer discovery findings were not added in this QA pass because the final discovery content was not provided. |
+| AI coding screenshots | Requested screenshot files such as `docs/images/ai-coding-session-1.png` and prompt screenshots were not present in `docs/images/` during this QA pass, so documentation should not claim they are included. |
+| Main-branch merge | The improved branch should not be merged into `main` as “final complete” until missing non-code evidence is supplied or explicitly left pending by the team. |
 
-## Final Manual Browser QA Checklist
+## Final Manual Checklist
 
-- Landing page loads from the deployed frontend.
-- Local profile can be created or continued.
-- `Load sample case` works.
-- Setup form validates required fields.
-- Brief page generates.
-- Q&A page appears.
-- Typed answer can be entered.
-- Follow-up or skip controls work.
-- Final report generates.
-- Camera denied state does not block typed rehearsal.
-- Microphone denied state does not block typed rehearsal.
-- The app copy frames pricing as a proposed MVP model, not a live commercial
-  product.
+Use this checklist immediately before recording the walkthrough video or submitting the final D2L package.
+
+| Item | Status From Latest Pass |
+|---|---|
+| Landing page loads | PASS locally |
+| Local profile can be created | PASS locally |
+| Sample case loads | PASS locally |
+| Setup form accepts required fields | PASS locally |
+| Brief page generates | PASS locally |
+| Q&A page appears | PASS locally |
+| Typed answer can be entered and saved | PASS locally |
+| Follow-up or skip controls work | PASS locally |
+| Final report generates | PASS locally |
+| Camera-disabled typed fallback works | PASS with limitation |
+| Microphone-disabled typed fallback works | PASS with limitation |
+| Deployed frontend reachable | PASS by HTTP smoke check |
