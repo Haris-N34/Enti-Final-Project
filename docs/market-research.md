@@ -20,15 +20,16 @@ Observed and expected pain points:
 - Presentation tools may help with delivery but do not understand the case rubric or business recommendation.
 - Teams need a low-friction way to identify weak assumptions, missing evidence, and unclear answers before the real presentation.
 
-## Customer Discovery To Add Before Submission
+## Customer Discovery Evidence
 
-This section should be completed with real conversations before final submission.
+This table is ready for real validation evidence. It should be filled only with true conversations, tests, dates, and findings.
 
 | Source | Person / Role | Date | Evidence Collected | Product Implication |
 |---|---|---|---|---|
-| Interview | Case competitor | Pending | Pending | Pending |
-| Interview | Case coach or TA | Pending | Pending | Pending |
-| Peer test | Student team | Pending | Pending | Pending |
+| Interview | Student case competitor | Evidence needed | Evidence needed | Evidence needed |
+| Interview | Case coach, TA, or experienced competitor | Evidence needed | Evidence needed | Evidence needed |
+| Peer test | Student peer tester or team | Evidence needed | Evidence needed | Evidence needed |
+| Stakeholder conversation | Club executive, course TA, organizer, or sponsor-side representative | Evidence needed | Evidence needed | Evidence needed |
 
 Recommended interview questions:
 
@@ -38,6 +39,34 @@ Recommended interview questions:
 - What would make a rehearsal tool worth using?
 - Which output would be most useful: questions, scores, transcript, body/delivery feedback, or final report?
 - What would make you distrust an AI-generated coaching report?
+
+## Customer Discovery Themes To Validate
+
+### Theme 1: Teams practice slides more than judge defense
+
+The app is designed around the assumption that teams often rehearse the presentation itself but spend less time answering skeptical follow-up questions. Real customer discovery should confirm, revise, or reject this assumption.
+
+### Theme 2: Feedback arrives too late
+
+The app assumes students often depend on coach, peer, or instructor availability. Real discovery should confirm whether a self-serve rehearsal loop would create value before human feedback sessions.
+
+### Theme 3: Generic AI chat is useful but unstructured
+
+The app assumes generic chat tools can generate questions but do not preserve a full case workflow from setup to report. Real discovery should test whether users prefer this guided workflow.
+
+### Theme 4: Trust requires transparency
+
+The app assumes users will distrust vague confidence scores or body-language claims. This supports the safety boundary: observable delivery signals only, not emotion, personality, or winner prediction.
+
+## Validation Matrix
+
+| Pain Point Found | Evidence Source | App Feature That Responds | Status |
+|---|---|---|---|
+| Teams under-practice judge Q&A | Customer discovery evidence needed | Judge-style question generator | Implemented |
+| Teams struggle to defend assumptions | Customer discovery evidence needed | Follow-up questions and critique | Implemented |
+| Feedback is delayed | Customer discovery evidence needed | Self-serve typed rehearsal | Implemented |
+| Generic AI chat lacks structure | Competitive analysis and interviews to validate | Setup -> brief -> Q&A -> report workflow | Implemented |
+| AI feedback can be distrusted | Safety review and interviews to validate | Observable evidence, warnings, no winner prediction | Implemented |
 
 ## Market Opportunity
 
@@ -65,4 +94,4 @@ Case Mirror has a focused opportunity because it targets a specific recurring wo
 
 ## Research Conclusion
 
-Case Mirror is worth building if the team can show that case teams need structured, repeated, judge-style rehearsal and that the app produces feedback that is more actionable than generic AI chat. The final submission should strengthen this conclusion with at least two real user or stakeholder conversations.
+Case Mirror is worth building if the team can show that case teams need structured, repeated, judge-style rehearsal and that the app produces feedback that is more actionable than generic AI chat. The final submission should strengthen this conclusion with real user or stakeholder conversations recorded in [customer-discovery-notes.md](./customer-discovery-notes.md).

@@ -74,3 +74,28 @@ Build a working AI-assisted case rehearsal application that helps student teams 
 | Teachable Machine evidence | browser model assets and body-event summary | `case-mirror/assets/teachable-image/`, frontend guide |
 | Safety boundaries | prompts, route sanitization, tests | backend tests and safety docs |
 | Local runnability | frontend/backend commands | README |
+
+## Acceptance Criteria
+
+| Requirement | Acceptance Criteria | Verified By |
+|---|---|---|
+| Case setup | User can enter case prompt and recommendation; app blocks progression if required fields are missing | Manual demo QA |
+| Brief generation | App produces a structured case brief and critique from entered materials | Demo flow |
+| Judge Q&A | App generates at least five judge-style questions tied to the case/rubric | Demo flow |
+| Typed answer fallback | User can answer without microphone or camera | Manual demo QA |
+| Follow-up question | Weak or incomplete answer can trigger a follow-up prompt | Demo flow |
+| Readiness report | App summarizes strengths, weak spots, missed criteria, and drills | Demo flow |
+| Backend fallback | App remains usable when backend/API keys are unavailable | Testing doc |
+| Safety boundary | App avoids emotion, personality, protected-trait, winner, or official judging claims | Security docs and backend tests |
+| Local runnability | Fresh clone can run frontend and backend using documented commands | README and testing doc |
+
+## Feature-To-Business-Value Map
+
+| Feature | User Pain Point | Business Value |
+|---|---|---|
+| Case-specific setup | Generic tools do not understand the case prompt or rubric | More relevant practice |
+| Judge-style questions | Teams under-practice pressure Q&A | Better presentation defense |
+| Typed answers | Mic/camera can fail during demos or practice | Reliable low-friction workflow |
+| Follow-ups | Teams often give incomplete answers | Helps expose weak assumptions |
+| Readiness report | Feedback is often scattered or delayed | Concrete next-practice plan |
+| Observable delivery signals | Teams want delivery feedback but not pseudoscience | Safer coaching evidence |

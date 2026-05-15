@@ -1615,7 +1615,7 @@ function renderPricing() {
           <h1 class="cm-page-title">Free to test.<br /><span>Designed to scale.</span></h1>
           <p class="cm-page-lead">
             These tiers are a proposed business model for the course MVP, not
-            active paid plans. They show how Case Mirror could move from a
+            live paid offerings. They show how Case Mirror could move from a
             low-friction student trial into premium prep and institution-wide
             programs.
           </p>

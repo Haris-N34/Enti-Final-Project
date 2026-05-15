@@ -8,10 +8,12 @@ This page is a quick map for reviewers who want to verify the project against EN
 |---|---|
 | Problem statement and target users | [README.md](../README.md) |
 | Market research and validation plan | [market-research.md](./market-research.md) |
+| Customer discovery note template | [customer-discovery-notes.md](./customer-discovery-notes.md) |
 | Competitive alternatives and differentiation | [competitive-analysis.md](./competitive-analysis.md) |
 | Requirements and scope | [requirements.md](./requirements.md) |
 | User stories and personas | [user-stories.md](./user-stories.md) |
 | Limitations and future work | [limitations-and-future-work.md](./limitations-and-future-work.md) |
+| Team roster and contribution split | [team-contributions.md](./team-contributions.md) |
 
 ## Technical Evidence
 
@@ -61,17 +63,20 @@ This page is a quick map for reviewers who want to verify the project against EN
 | Live frontend deployment | https://enti-final-project.vercel.app/ |
 | Vercel configuration | [../vercel.json](../vercel.json) |
 | Submission link tracker | [submission-links.md](./submission-links.md) |
+| Demo readiness plan | [demo-readiness.md](./demo-readiness.md) |
 | Demo script | [demo-script.md](./demo-script.md) |
 | Blog outline | [blog-outline.md](./blog-outline.md) |
 | Presentation outline | [presentation-outline.md](./presentation-outline.md) |
 
-## Remaining Non-GitHub Evidence
+## Final Non-GitHub Evidence Status
 
-These items cannot be fully completed from repository work alone:
-
-- final team roster
-- real customer discovery notes
-- screenshots from every AI coding tool used by group members
-- published blog/article URL
-- direct walkthrough video URL
-- final presentation slides
+| Evidence Item | Status | Location |
+|---|---|---|
+| Final team roster | Complete | [README.md](../README.md), [team-contributions.md](./team-contributions.md) |
+| Real customer discovery notes | Evidence slots ready; real notes still required | [market-research.md](./market-research.md), [customer-discovery-notes.md](./customer-discovery-notes.md) |
+| AI coding screenshots | Evidence slots ready; screenshots still required | [ai-development-process.md](./ai-development-process.md), [prompt-examples.md](./prompt-examples.md), `docs/images/` |
+| Prompt examples | Complete as text examples; screenshot evidence pending | [prompt-examples.md](./prompt-examples.md) |
+| Final QA evidence | Complete for current repo/app checks | [testing.md](./testing.md) |
+| Blog/article URL | Pending until published | [submission-links.md](./submission-links.md) |
+| Direct video URL | Pending until uploaded | [submission-links.md](./submission-links.md) |
+| Slides link/file | Pending until final presentation | [submission-links.md](./submission-links.md) |

@@ -6,20 +6,22 @@ The ENTI 633 final project requires a working software application developed pri
 
 ## Tools Used
 
-Fill this section with the exact tools used by the team before final submission.
-
 | Tool | Used For | Evidence To Include |
 |---|---|---|
-| Codex | Repository audit, documentation, implementation support, test/runnability checks | Screenshot of session and commit diff |
-| Pending team confirmation - Cursor / Replit / Lovable / Bolt / v0 / other | Main AI coding environment if used by group members | Screenshot of prompts and generated code review |
+| OpenAI Codex | Repository audit, branch implementation, documentation support, test/runnability checks | `docs/images/ai-coding-session-1.png`, related branch/commits |
+| Cursor / Replit / Lovable / Bolt / v0 / other specialized AI coding tool | Main AI coding environment if used by group members | Screenshot of prompts and generated code review |
 | ChatGPT / Claude / Gemini | Ideation, requirements, prompt refinement, blog drafting, debugging | Prompt examples and revision notes |
 | Teachable Machine | Browser-side gesture/image model | Screenshot of classes/training/export |
+
+## Why This Satisfies The Course Requirement
+
+The repository documents a specialized AI-assisted development workflow rather than only generic chatbot copy-paste. Codex was used inside the development environment to inspect files, propose targeted changes, revise implementation details, improve documentation, run checks, and audit course compliance. The team should add screenshots from any other specialized coding environment used by group members so the final evidence package is complete.
 
 ## Verified Repository Evidence
 
 | Evidence | Location | What It Proves |
 |---|---|---|
-| Course-compliance audit and documentation revision | Commit `d859f90` and current docs | AI-assisted repository setup, audit, and documentation improvement |
+| Course-compliance audit and documentation revision | Current Codex branch commits and documentation updates | AI-assisted repository setup, audit, and documentation improvement |
 | Prompt examples | [prompt-examples.md](./prompt-examples.md) | Representative prompts used or adapted during development |
 | Safety and scope documentation | [limitations-and-future-work.md](./limitations-and-future-work.md), backend tests | Human review of AI output boundaries |
 | Development iteration | [development-log.md](./development-log.md) | Multiple commits across UI, backend, model integration, deployment, and QA |
@@ -63,9 +65,18 @@ Use this section in the blog and presentation.
 - AI can generate broad "confidence" or body-language claims; the team constrained outputs to observable coaching evidence.
 - AI can create large files quickly; the team should explain why the static MVP accepted some frontend file size tradeoffs.
 
+## Example Of Human Review And Revision
+
+| AI Output / Initial Draft | Human Review Concern | Final Decision |
+|---|---|---|
+| Broad delivery or confidence language | Could imply emotion/personality inference or official judging | Rewrote as observable delivery signals only |
+| Generic presentation-coach positioning | Too broad and crowded | Narrowed product to case-competition Q&A rehearsal |
+| Ambitious production features | Too much for course MVP | Kept static frontend, local backend, typed fallback, and report flow |
+| Market or traction claims | Unsupported without evidence | Removed or reframed as MVP/demo language |
+
 ## Evidence Still Needed
 
 - Screenshots of actual AI coding sessions.
-- At least three representative prompts.
-- A before/after example showing how the team revised AI output.
+- Screenshot evidence for at least three representative prompts.
+- A screenshot-backed before/after example showing how the team revised AI output.
 - A short reflection from each team member, or one group reflection with named contributions.

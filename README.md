@@ -7,13 +7,33 @@ Case Mirror is an ENTI 633 final group project that helps student case-competiti
 - Course: ENTI 633 L01, Generative AI and Prompting
 - Program context: Master of Management, Haskayne School of Business, University of Calgary
 - Project type: Final Group Project, AI-Assisted Software Development
-- Team members: add the final submitting roster here before D2L submission
+- Team members:
+  - Arash Ajdari - technical development
+  - Shayan Shaikh - technical development
+  - Haris Naveed - technical development
+  - Bilal Ahmed - technical development
+  - Alex Titov - presentation and blog coordination
+  - Jana van de Vrie - presentation and blog coordination
+  - Zarna Shah - presentation and blog coordination
 - Repository: https://github.com/Haris-N34/Enti-Final-Project
 - Live frontend: https://enti-final-project.vercel.app/
 
 ## One-Sentence Pitch
 
 Case Mirror turns a team's case prompt, rubric, recommendation, speaking notes, and practice answers into a guided rehearsal flow with AI-assisted judge questions, answer feedback, delivery signals, and a final readiness report.
+
+## Quick Evaluation Guide
+
+| Course requirement | Repository evidence |
+|---|---|
+| Working software app | Deployed frontend, local run instructions, [demo-readiness.md](./docs/demo-readiness.md), [testing.md](./docs/testing.md) |
+| Clear business problem | Problem and Market Opportunity section, [market-research.md](./docs/market-research.md) |
+| Market research and validation | [market-research.md](./docs/market-research.md), [customer-discovery-notes.md](./docs/customer-discovery-notes.md) |
+| Requirements engineering | [requirements.md](./docs/requirements.md), [user-stories.md](./docs/user-stories.md) |
+| Specialized AI-assisted development | [ai-development-process.md](./docs/ai-development-process.md), [prompt-examples.md](./docs/prompt-examples.md) |
+| GitHub documentation | README, LICENSE, [evidence-index.md](./docs/evidence-index.md), architecture/API/testing/security docs |
+| Technical components | Static frontend, FastAPI backend, Teachable Machine assets, local fallback flow |
+| Team contribution evidence | [team-contributions.md](./docs/team-contributions.md) |
 
 ## Problem And Market Opportunity
 
@@ -107,6 +127,10 @@ See [docs/screenshots.md](./docs/screenshots.md) for the required screenshot che
 `- README.md
 ```
 
+## Technology Choice Note
+
+The course recommends React for web applications, but other web stacks are acceptable. For this short block-week MVP, the team used a static HTML/CSS/JavaScript frontend to maximize demo reliability, reduce deployment risk, and keep the full setup -> brief -> Q&A -> report workflow easy to run from a fresh clone. The backend uses FastAPI for API-based AI/model integrations, upload analysis, live practice endpoints, and testable safety boundaries.
+
 ## Technical Overview
 
 ### Frontend
@@ -138,6 +162,8 @@ Technical docs:
 - [docs/FRONTEND_GUIDE.md](./docs/FRONTEND_GUIDE.md)
 - [docs/API_OVERVIEW.md](./docs/API_OVERVIEW.md)
 - [docs/development-log.md](./docs/development-log.md)
+- [docs/demo-readiness.md](./docs/demo-readiness.md)
+- [docs/team-contributions.md](./docs/team-contributions.md)
 
 ## AI-Assisted Development Workflow
 
@@ -172,6 +198,19 @@ The MVP prioritizes a stable live demo path over a full production platform. The
 6. Generate a final readiness report.
 
 See [docs/requirements.md](./docs/requirements.md) and [docs/user-stories.md](./docs/user-stories.md).
+
+## MVP Status
+
+Case Mirror is a course MVP, not a production SaaS product. The current version prioritizes:
+
+- reliable demo flow
+- typed-answer fallback
+- local/backend fallback behavior
+- clear business use case
+- evidence-based readiness report
+- safe handling of body/delivery signals
+
+Production features such as paid accounts, cloud persistence, enterprise admin dashboards, official judging workflows, and production authentication are intentionally out of scope.
 
 ## Local Development
 

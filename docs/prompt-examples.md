@@ -1,6 +1,6 @@
 # Prompt Examples
 
-This file documents the AI-assisted development prompts that should be shown in the blog post and presentation. Replace or supplement these examples with screenshots from the actual tools used.
+This file documents AI-assisted development prompts that should be shown in the final evidence package. The text examples below are useful, but screenshots from the actual tools should be added when available.
 
 ## Prompt 1: Requirements Engineering
 
@@ -61,3 +61,13 @@ Add screenshots for:
 - Teachable Machine training/export screen.
 
 Do not include screenshots of raw code in the blog post unless the instructor explicitly permits it. Prefer prompt and app UI screenshots.
+
+## Screenshot Evidence
+
+| Prompt Area | Screenshot | What It Shows |
+|---|---|---|
+| Requirements engineering | `docs/images/prompt-requirements.png` | AI helped turn the business idea into requirements and user stories |
+| Specialized coding environment | `docs/images/ai-coding-session-1.png` | AI coding tool reviewed and edited repository files |
+| Debugging / testing | `docs/images/prompt-debugging.png` | AI helped inspect errors or improve QA checks |
+| Documentation audit | `docs/images/prompt-repo-audit.png` | AI helped audit the repo against ENTI 633 requirements |
+| Teachable Machine | `docs/images/teachable-machine-training.png` | Browser-side model classes, training, or export evidence |
