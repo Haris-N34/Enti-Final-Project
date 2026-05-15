@@ -62,14 +62,16 @@ Add screenshots for:
 
 Do not include screenshots of raw code in the blog post unless the instructor explicitly permits it. Prefer prompt and app UI screenshots.
 
-## Pending Screenshot Evidence
+## Screenshot Evidence Status
 
-The screenshot filenames below are evidence slots to fill when the team adds the actual image files under `docs/images/`. Do not cite them as included evidence until the files exist in the repository.
+The final presentation deck and repository currently document the AI-assisted process through text, commit history, and tool descriptions. The repo does not currently include prompt screenshots under `docs/images/`.
 
-| Prompt Area | Planned Screenshot File | What It Should Show |
+For the public blog/article, the team should include screenshots from actual prompt sessions or AI coding sessions if available. Do not fabricate screenshots or imply screenshot files exist unless they have been added to the repository.
+
+| Prompt Area | Status | Recommended Evidence If Available |
 |---|---|---|
-| Requirements engineering | `docs/images/prompt-requirements.png` | AI helped turn the business idea into requirements and user stories |
-| Specialized coding environment | `docs/images/ai-coding-session-1.png` | AI coding tool reviewed and edited repository files |
-| Debugging / testing | `docs/images/prompt-debugging.png` | AI helped inspect errors or improve QA checks |
-| Documentation audit | `docs/images/prompt-repo-audit.png` | AI helped audit the repo against ENTI 633 requirements |
-| Teachable Machine | `docs/images/teachable-machine-training.png` | Browser-side model classes, training, or export evidence |
+| Requirements engineering | Text prompt documented | Add `docs/images/prompt-requirements.png` only if an actual screenshot exists |
+| Specialized coding environment | Codex use documented through branch/deck evidence | Add `docs/images/ai-coding-session-1.png` only if an actual screenshot exists |
+| Debugging / testing | Text prompt documented | Add `docs/images/prompt-debugging.png` only if an actual screenshot exists |
+| Documentation audit | Text prompt documented | Add `docs/images/prompt-repo-audit.png` only if an actual screenshot exists |
+| Teachable Machine | Model assets documented | Add `docs/images/teachable-machine-training.png` only if an actual screenshot exists |

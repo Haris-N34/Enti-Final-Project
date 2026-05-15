@@ -6,16 +6,31 @@ The ENTI 633 final project requires a working software application developed pri
 
 ## Tools Used
 
-| Tool | Used For | Evidence To Include |
+| Tool / System | Used For | Evidence |
 |---|---|---|
-| OpenAI Codex | Repository audit, branch implementation, documentation support, test/runnability checks | `docs/images/ai-coding-session-1.png`, related branch/commits |
-| Cursor / Replit / Lovable / Bolt / v0 / other specialized AI coding tool | Main AI coding environment if used by group members | Screenshot of prompts and generated code review |
-| ChatGPT / Claude / Gemini | Ideation, requirements, prompt refinement, blog drafting, debugging | Prompt examples and revision notes |
-| Teachable Machine | Browser-side gesture/image model | Screenshot of classes/training/export |
+| OpenAI Codex | Repository audit, documentation improvement, grading-readiness checks, QA evidence updates, and branch implementation support | Current branch commits; final deck slide 9 says the product was built using Codex |
+| ChatGPT / Claude / Gemini or equivalent general AI tools | Ideation, requirements framing, prompt refinement, writing revision, and debugging support | Representative prompt examples in `prompt-examples.md`; final deck slide 10 describes AI help with ideation, requirements, development, and writing |
+| FastAPI backend with model/provider integrations | API-based AI workflow for preparation, grading, report generation, and media-analysis support | Backend code, API docs, testing evidence |
+| Google Teachable Machine | Browser-side delivery/gesture evidence in the MVP | Teachable Machine model assets in `case-mirror/assets/teachable-image/`; final deck slide 9 |
+| Tavily / Deepgram / Qwen-compatible reasoning endpoint | Optional external services for research, transcription fallback, and reasoning support | Backend docs and final deck slide 9 |
+| Vercel + GitHub | Static frontend deployment and public documentation | README, Vercel config, deployment URL, GitHub docs |
 
 ## Why This Satisfies The Course Requirement
 
-The repository documents a specialized AI-assisted development workflow rather than only generic chatbot copy-paste. Codex was used inside the development environment to inspect files, propose targeted changes, revise implementation details, improve documentation, run checks, and audit course compliance. The team should add screenshots from any other specialized coding environment used by group members so the final evidence package is complete.
+The project was developed through a specialized AI-assisted workflow rather than only by copying generic chatbot output into a compiler. The final presentation deck states that the product was built using Codex, and the repository contains branch commits where Codex-assisted work improved documentation, QA evidence, course-readiness mapping, and repository structure.
+
+AI also supported the broader development lifecycle: narrowing the idea, defining requirements, separating MVP scope from future scope, scaffolding frontend/backend work, and improving documentation. Human review remained central. The team removed unsupported traction claims, constrained body/delivery language, avoided winner prediction and personality/emotion claims, and manually tested the setup → brief → Q&A → report flow.
+
+## Slide-Backed AI Development Narrative
+
+The final presentation describes AI as a development partner across four areas:
+
+| Area | How AI Helped | Human Oversight |
+|---|---|---|
+| Ideation | Narrowed a broad presentation-coaching idea into a focused rehearsal tool | Team selected the case-competition wedge and rejected generic positioning |
+| Requirements | Defined the four-step flow and separated MVP from advanced features | Team kept the MVP limited to setup, brief, Q&A, feedback, and report |
+| Development | Helped scaffold frontend pages, FastAPI routes, and backend structure | Team tested the actual workflow and kept fallback paths for demo reliability |
+| Writing | Converted scattered project details into clearer GitHub documentation | Team checked that claims matched the actual repo and app |
 
 ## Verified Repository Evidence
 
@@ -74,9 +89,12 @@ Use this section in the blog and presentation.
 | Ambitious production features | Too much for course MVP | Kept static frontend, local backend, typed fallback, and report flow |
 | Market or traction claims | Unsupported without evidence | Removed or reframed as MVP/demo language |
 
-## Evidence Still Needed
+## Evidence Status
 
-- Screenshots of actual AI coding sessions.
-- Screenshot evidence for at least three representative prompts.
-- A screenshot-backed before/after example showing how the team revised AI output.
-- A short reflection from each team member, or one group reflection with named contributions.
+| Evidence Item | Status | Note |
+|---|---|---|
+| Codex use | Documented | Final deck says the product was built using Codex; branch commits show Codex-assisted repo-readiness work |
+| Representative prompts | Documented as text | `prompt-examples.md` includes prompts and human revision notes |
+| Prompt screenshots | Not included in repo unless files are added | Required mainly for the blog/article evidence package; do not claim screenshots exist unless files are present |
+| Teachable Machine evidence | Partially documented | Model assets are in the repo; add a screenshot only if available |
+| Human review and revision | Documented | Safety boundaries, scope control, QA, and removal of unsupported claims are documented |

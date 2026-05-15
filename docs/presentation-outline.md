@@ -1,5 +1,20 @@
 # Presentation Outline
 
+The final presentation deck already covers:
+
+- team/program context,
+- problem and pain points,
+- ENACTUS/JDC validation,
+- competitive alternatives,
+- product workflow,
+- demo video,
+- feature-to-pain-point mapping,
+- proposed pricing,
+- roadmap,
+- tech stack,
+- AI-assisted development and human oversight,
+- lessons and future applications.
+
 ## Slide 1 - Title
 
 Case Mirror / CaseCoach

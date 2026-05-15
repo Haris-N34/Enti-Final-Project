@@ -2,15 +2,17 @@
 
 This file summarizes contribution ownership for the ENTI 633 final group project. It is intended to show group accountability without overstating individual work.
 
-| Team Member | Primary Contribution Area | Evidence |
-|---|---|---|
-| Arash Ajdari | Technical development | Frontend/backend implementation work, QA, and technical review evidence to be confirmed by team |
-| Shayan Shaikh | Technical development | Frontend/backend implementation work, QA, and technical review evidence to be confirmed by team |
-| Haris Naveed | Technical development | Repository, frontend/backend implementation, QA, and GitHub evidence |
-| Bilal Ahmed | Technical development | Frontend/backend implementation work, QA, and technical review evidence to be confirmed by team |
-| Alex Titov | Presentation and blog coordination | Final presentation/blog materials and delivery evidence to be added outside repository |
-| Jana van de Vrie | Presentation and blog coordination | Final presentation/blog materials and delivery evidence to be added outside repository |
-| Zarna Shah | Presentation and blog coordination | Final presentation/blog materials and delivery evidence to be added outside repository |
+| Team Member | Program Context | Primary Contribution Area | Evidence |
+|---|---|---|---|
+| Jana van de Vrie | ENTI 633 MBA | Presentation/blog coordination and business narrative | Final deck team slide; final presentation materials |
+| Zarna Shah | ENTI 633 MBA | Presentation/blog coordination and business narrative | Final deck team slide; final presentation materials |
+| Alex Titov | ENTI 633 MBA | Presentation/blog coordination and business narrative | Final deck team slide; final presentation materials |
+| Bilal Ahmed | ENTI 333 BSc Computer Science | Technical development | Final deck team slide; repository technical implementation |
+| Shayan Shaikh | ENTI 333 BSc Computer Science | Technical development | Final deck team slide; repository technical implementation |
+| Haris Naveed | ENTI 333 BSc Computer Science | Technical development, repository documentation, QA evidence | Final deck team slide; repository branch and documentation evidence |
+| Arash Ajdari | ENTI 333 BSc Computer Science | Technical development, backend/live-flow QA, final QA evidence | Final deck team slide; latest QA commit and repository evidence |
+
+The final deck separates ENTI 633 MBA members from ENTI 333 BSc Computer Science members. This supports the course requirement that teams are not composed only of graduate students or only of undergraduate students. If a seven-member group requires instructor approval, the team should confirm and document that approval before final D2L submission.
 
 ## Team Workflow
 
@@ -23,5 +25,5 @@ This file summarizes contribution ownership for the ENTI 633 final group project
 
 - Team roster is consistent across README, blog, video, and slides.
 - Contribution claims match real work and do not exaggerate.
-- Customer discovery notes use real conversations only.
+- Customer discovery notes use real conversations or clearly identified deck-summary evidence only.
 - AI-assisted development screenshots use real tool sessions only.

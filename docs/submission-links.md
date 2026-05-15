@@ -6,10 +6,10 @@ Final D2L submission should include one deliverable with these links or attachme
 
 | Item | Status | Link / Location |
 |---|---|---|
-| GitHub repository | Present | https://github.com/Haris-N34/Enti-Final-Project |
-| Published blog/article | Pending final submission artifact | Add public article URL when ready |
-| Direct video walkthrough | Pending final submission artifact | Add direct video URL when ready |
-| Presentation slides | Pending final submission artifact | Add slide URL or attachment reference when ready |
+| GitHub repository | Present | `https://github.com/Haris-N34/Enti-Final-Project` |
+| Published blog/article | Pending final publication | Add public article URL when ready |
+| Direct video walkthrough | Pending final upload/link | Add direct video URL when ready |
+| Presentation slides | Prepared | Final presentation deck: “Case Mirror: AI-Powered Case Competition Preparation Platform”; add public link or attach in D2L |
 
 ## Optional
 

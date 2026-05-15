@@ -91,9 +91,9 @@ These runtime data files are local artifacts and are not part of the submitted s
 | Deployed frontend | The deployed static frontend is the safest public demo entry point. The backend is local-only for this MVP unless a separate backend host is configured and verified. |
 | Live model providers | Remote model behavior depends on valid API keys and provider availability. The app has deterministic fallback paths for grading/reporting when model output is unavailable or unsafe. |
 | Camera and microphone | Typed-answer rehearsal is the reliable demo path. Webcam, Teachable Machine, and microphone features depend on browser permissions, lighting, camera availability, CDN/model loading, and local device support. |
-| Customer discovery evidence | Real interview/customer discovery findings were not added in this QA pass because the final discovery content was not provided. |
+| Customer discovery evidence | Slide-backed ENACTUS/JDC validation summaries are now documented. Full interview transcripts, participant names, and exact interview dates are not included. |
 | AI coding screenshots | Requested screenshot files such as `docs/images/ai-coding-session-1.png` and prompt screenshots were not present in `docs/images/` during this QA pass, so documentation should not claim they are included. |
-| Main-branch merge | The improved branch should not be merged into `main` as “final complete” until missing non-code evidence is supplied or explicitly left pending by the team. |
+| Main-branch merge | This pass does not merge to `main`. Merge only after the team confirms the docs render correctly, pending blog/video links are acceptable, and this is the intended D2L branch. |
 
 ## Final Manual Checklist
 

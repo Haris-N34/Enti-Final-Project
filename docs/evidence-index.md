@@ -7,8 +7,8 @@ This page is a quick map for reviewers who want to verify the project against EN
 | Evidence | File |
 |---|---|
 | Problem statement and target users | [README.md](../README.md) |
-| Market research and validation plan | [market-research.md](./market-research.md) |
-| Customer discovery note template | [customer-discovery-notes.md](./customer-discovery-notes.md) |
+| Market research and validation evidence | [market-research.md](./market-research.md) |
+| Customer discovery summary | [customer-discovery-notes.md](./customer-discovery-notes.md) |
 | Competitive alternatives and differentiation | [competitive-analysis.md](./competitive-analysis.md) |
 | Requirements and scope | [requirements.md](./requirements.md) |
 | User stories and personas | [user-stories.md](./user-stories.md) |
@@ -72,11 +72,11 @@ This page is a quick map for reviewers who want to verify the project against EN
 
 | Evidence Item | Status | Location |
 |---|---|---|
-| Final team roster | Complete | [README.md](../README.md), [team-contributions.md](./team-contributions.md) |
-| Real customer discovery notes | Evidence slots ready; real notes still required | [market-research.md](./market-research.md), [customer-discovery-notes.md](./customer-discovery-notes.md) |
-| AI coding screenshots | Evidence slots ready; screenshots still required | [ai-development-process.md](./ai-development-process.md), [prompt-examples.md](./prompt-examples.md), `docs/images/` |
-| Prompt examples | Complete as text examples; screenshot evidence pending | [prompt-examples.md](./prompt-examples.md) |
+| Final team roster | Complete | `README.md`, `team-contributions.md`, final presentation deck |
+| Customer discovery summary | Complete from final deck evidence; fuller interview transcripts not included | `market-research.md`, `customer-discovery-notes.md` |
+| AI-assisted development evidence | Complete as text/deck/commit evidence; prompt screenshots not included unless added | `ai-development-process.md`, `prompt-examples.md`, branch commits |
+| Prompt examples | Complete as text examples; screenshots recommended for blog if available | `prompt-examples.md` |
 | Final QA evidence | Complete for current repo/app checks | [testing.md](./testing.md) |
 | Blog/article URL | Pending until published | [submission-links.md](./submission-links.md) |
 | Direct video URL | Pending until uploaded | [submission-links.md](./submission-links.md) |
-| Slides link/file | Pending until final presentation | [submission-links.md](./submission-links.md) |
+| Slides link/file | Available as final presentation deck outside repo unless team adds a link | [submission-links.md](./submission-links.md) |

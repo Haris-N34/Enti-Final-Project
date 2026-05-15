@@ -15,6 +15,7 @@ Case Mirror is an ENTI 633 final group project that helps student case-competiti
   - Alex Titov - presentation and blog coordination
   - Jana van de Vrie - presentation and blog coordination
   - Zarna Shah - presentation and blog coordination
+- Team-size note: This seven-member group reflects the merged ENTI 633 / ENTI 333 project team shown in the final presentation deck. If instructor approval or program assignment needs to be documented, the team should confirm this before final D2L submission.
 - Repository: https://github.com/Haris-N34/Enti-Final-Project
 - Live frontend: https://enti-final-project.vercel.app/
 
@@ -179,7 +180,7 @@ Development assistance included:
 - improving documentation and grading readiness
 - auditing the repo against the ENTI 633 final project requirements
 
-Important: final submission should include real screenshots of prompts and AI coding sessions. The repository now documents prompt examples and Codex-assisted repository work; the team should still add screenshots from any other main coding environment used by group members.
+The final presentation deck documents Codex-supported development, and the repository includes prompt examples, AI-development process notes, QA evidence, and branch-level documentation work. Prompt screenshots should be included in the public blog/article if available, but the repository does not claim screenshot files exist unless they are added under `docs/images/`.
 
 See:
 

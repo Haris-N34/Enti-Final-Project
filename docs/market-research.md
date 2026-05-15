@@ -22,51 +22,44 @@ Observed and expected pain points:
 
 ## Customer Discovery Evidence
 
-This table is ready for real validation evidence. It should be filled only with true conversations, tests, dates, and findings.
+The final presentation deck records two direct validation signals from student competition contexts. These notes should be treated as summarized customer-discovery evidence from the presentation materials, not as full interview transcripts.
 
 | Source | Person / Role | Date | Evidence Collected | Product Implication |
 |---|---|---|---|---|
-| Interview | Student case competitor | Evidence needed | Evidence needed | Evidence needed |
-| Interview | Case coach, TA, or experienced competitor | Evidence needed | Evidence needed | Evidence needed |
-| Peer test | Student peer tester or team | Evidence needed | Evidence needed | Evidence needed |
-| Stakeholder conversation | Club executive, course TA, organizer, or sponsor-side representative | Evidence needed | Evidence needed | Evidence needed |
+| Interview | ENACTUS participant or stakeholder | May 2026, exact date not specified in deck | The deck states that ENACTUS feedback supported the need for competition-specific pitch preparation. The included quote was: “I think Enactus is a perfect paradigm for an idea like this, since our pitching style is more storytelling-skewed.” | Confirms that Case Mirror should focus on pitch/storytelling defense and judge-style preparation, not just generic case knowledge. |
+| Interview | JDC participant or stakeholder | May 2026, exact date not specified in deck | The deck states that interviews with ENACTUS and JDC confirmed the gap is not general knowledge, but competition-specific pitch prep. | Supports the product’s focus on panel-style Q&A, rubric alignment, delivery feedback, and a case-specific readiness report. |
+| Competitive analysis | Alternative-tool review from final deck | May 2026 | The deck compares ChatGPT/Gemini/Claude, CaseCoach, Soreno AI, PrepLounge, Yoodli/Orai, and YouTube/Coursera. Each alternative addresses only part of the problem, such as brainstorming, interview prep, speech feedback, or passive learning. | Strengthens the market gap: Case Mirror combines strategy critique, delivery feedback, and judge simulation in one guided workflow. |
+| Demo validation | Final presentation demo and QA evidence | May 2026 | The deck includes a demo-video slide, and repository QA confirms the local app completed setup → brief → Q&A → report. | Supports that the MVP is not only conceptual; it has a working demonstration path. |
 
-Recommended interview questions:
+## Validated Discovery Themes
 
-- How do you currently practice for case competition Q&A?
-- What feedback do you usually get too late?
-- What makes judge questions difficult?
-- What would make a rehearsal tool worth using?
-- Which output would be most useful: questions, scores, transcript, body/delivery feedback, or final report?
-- What would make you distrust an AI-generated coaching report?
+### Theme 1: Teams need competition-specific pitch preparation
 
-## Customer Discovery Themes To Validate
+The ENACTUS/JDC validation summarized in the final deck supports the idea that the gap is not simply “students need more business knowledge.” The more specific problem is that teams need to rehearse the way they will defend their story, assumptions, recommendation, implementation plan, and tradeoffs in a live competition setting.
 
-### Theme 1: Teams practice slides more than judge defense
+### Theme 2: Existing tools are fragmented
 
-The app is designed around the assumption that teams often rehearse the presentation itself but spend less time answering skeptical follow-up questions. Real customer discovery should confirm, revise, or reject this assumption.
+The competitive analysis shows that current options are split across generic AI brainstorming, interview preparation, speech coaching, passive learning, and peer practice. Case Mirror’s differentiation is the structured workflow from case setup to brief, Q&A, and final readiness report.
 
-### Theme 2: Feedback arrives too late
+### Theme 3: Delivery feedback must be honest and limited
 
-The app assumes students often depend on coach, peer, or instructor availability. Real discovery should confirm whether a self-serve rehearsal loop would create value before human feedback sessions.
+The deck and repository both emphasize ethical framing. Case Mirror should not claim to detect emotion, personality, confidence, or winner likelihood. Delivery feedback should stay limited to observable coaching signals and practice suggestions.
 
-### Theme 3: Generic AI chat is useful but unstructured
+### Theme 4: The MVP should prioritize demo reliability
 
-The app assumes generic chat tools can generate questions but do not preserve a full case workflow from setup to report. Real discovery should test whether users prefer this guided workflow.
-
-### Theme 4: Trust requires transparency
-
-The app assumes users will distrust vague confidence scores or body-language claims. This supports the safety boundary: observable delivery signals only, not emotion, personality, or winner prediction.
+The repository QA confirms that typed-answer rehearsal is the safest demo path. Microphone, webcam, Teachable Machine, and provider-backed AI features should be treated as progressive enhancements, not demo-critical dependencies.
 
 ## Validation Matrix
 
 | Pain Point Found | Evidence Source | App Feature That Responds | Status |
 |---|---|---|---|
-| Teams under-practice judge Q&A | Customer discovery evidence needed | Judge-style question generator | Implemented |
-| Teams struggle to defend assumptions | Customer discovery evidence needed | Follow-up questions and critique | Implemented |
-| Feedback is delayed | Customer discovery evidence needed | Self-serve typed rehearsal | Implemented |
-| Generic AI chat lacks structure | Competitive analysis and interviews to validate | Setup -> brief -> Q&A -> report workflow | Implemented |
-| AI feedback can be distrusted | Safety review and interviews to validate | Observable evidence, warnings, no winner prediction | Implemented |
+| Teams lack a structured competition-prep workflow | Final deck, slide 2 pain points | Setup → brief → Q&A → report workflow | Implemented |
+| Teams need competition-specific pitch prep, not generic knowledge | ENACTUS/JDC validation summarized in final deck | Case-specific prompt/rubric/recommendation setup | Implemented |
+| Teams need realistic judging simulation | Final deck, slide 2 and slide 4 | Panel-style judge questions and adaptive follow-ups | Implemented |
+| Students need actionable feedback before competition day | Final deck, slide 6 feature/pain-point map | Per-answer feedback and final readiness report | Implemented |
+| Existing tools solve only part of the workflow | Final deck, slide 3 competitive analysis | Strategy critique + communication feedback + judge simulation | Implemented in MVP form |
+| AI coaching can overclaim body-language meaning | Final deck, slide 6; repo safety docs | Ethical framing; no emotion/personality analysis | Implemented |
+| Demo reliability matters | Repository QA evidence | Typed-answer fallback and local/static demo path | Implemented |
 
 ## Market Opportunity
 
@@ -94,4 +87,4 @@ Case Mirror has a focused opportunity because it targets a specific recurring wo
 
 ## Research Conclusion
 
-Case Mirror is worth building if the team can show that case teams need structured, repeated, judge-style rehearsal and that the app produces feedback that is more actionable than generic AI chat. The final submission should strengthen this conclusion with real user or stakeholder conversations recorded in [customer-discovery-notes.md](./customer-discovery-notes.md).
+Case Mirror is worth building because the validated problem is specific: student competition teams need a structured way to rehearse competition-specific pitch defense, not just another generic presentation coach or chatbot. The final deck’s ENACTUS/JDC validation and competitive analysis support the market gap, while the repository QA shows a working MVP path. The strongest current evidence is sufficient for a course MVP, but future product development should collect fuller interview notes, more peer-demo tests, and direct coach/organizer feedback before claiming broader market traction.
