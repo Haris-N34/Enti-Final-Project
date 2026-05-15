@@ -1405,8 +1405,8 @@ function renderHome() {
             </div>
             <div class="cm-floating-metric">
               <div class="cm-metric-head">
-                <span>Find out how ready you are</span>
-                <strong>Ready %</strong>
+                <span>Readiness snapshot</span>
+                <strong>Practice feedback only</strong>
               </div>
               <div class="cm-sparkbars">
                 <span style="height: 14px"></span>
@@ -1439,11 +1439,11 @@ function renderHome() {
             </button>
           </div>
           <div class="cm-rating">
-            <div class="cm-stars"><strong>4.9</strong><span>★★★★★</span></div>
+            <div class="cm-stars"><strong>MVP</strong><span>course build</span></div>
             <div class="cm-avatars">
-              <span>CK</span><span>MO</span><span>RA</span><span>+11</span>
+              <span>QA</span><span>AI</span><span>UX</span><span>MVP</span>
             </div>
-            <p>Case teams at 14 universities rehearse with Case Mirror before competition weekends.</p>
+            <p>Designed for student case teams preparing before competition weekends.</p>
           </div>
         </div>
       </section>
@@ -1502,9 +1502,9 @@ function renderHome() {
           <span class="cm-badge cm-badge--teal">For teams</span>
           <h2>Rehearsing the<br />case competition.</h2>
           <p>
-            We help university case teams walk into the presentation room more
-            prepared, more polished, and more confident in the recommendation
-            they are about to deliver to the panel.
+            Case Mirror helps university case teams rehearse the questions,
+            assumptions, and risks they may need to defend in the presentation
+            room.
           </p>
           <ul class="cm-check-list">
             <li>Prompt-aligned practice</li>
@@ -1515,7 +1515,7 @@ function renderHome() {
 
         <div class="cm-team-panels">
           <div class="cm-stat-stack">
-            <article class="cm-stat-card cm-stat-card--teal"><strong>1,800+</strong><span>rehearsals run</span></article>
+            <article class="cm-stat-card cm-stat-card--teal"><strong>MVP</strong><span>course project</span></article>
             <article class="cm-stat-card cm-stat-card--blue"><strong>5</strong><span>judge questions per run</span></article>
             <article class="cm-stat-card cm-stat-card--green"><strong>Track</strong><span>posture and movement proxies</span></article>
           </div>
@@ -1550,7 +1550,7 @@ function renderPricing() {
       price: "Free",
       badge: "Preview",
       tone: "soft",
-      description: "A simple way for students to test Case Mirror before paying.",
+      description: "A proposed entry tier for students testing the Case Mirror workflow.",
       includes: [
         "1 case practice session per month",
         "Basic case setup",
@@ -1561,11 +1561,11 @@ function renderPricing() {
         "No saved practice history",
         "No team collaboration"
       ],
-      purpose: "Helps students new to case competitions get started without feeling overwhelmed, while giving serious users a clear reason to upgrade."
+      purpose: "Shows how students new to case competitions could get started without feeling overwhelmed, while giving serious users a reason to consider deeper preparation."
     },
     {
       name: "Pro",
-      price: "Starting at $49.99/month",
+      price: "Proposed paid tier",
       badge: "Individual",
       tone: "focus",
       description: "Built for students seriously preparing for case competitions, pitch competitions, consulting challenges, and final presentations.",
@@ -1582,11 +1582,11 @@ function renderPricing() {
         "Structure, recommendation, risk, and time-discipline feedback",
         "Priority access to new features"
       ],
-      purpose: "Positions Case Mirror as a premium preparation tool for serious competitors who need focused competition practice beyond general AI tools."
+      purpose: "Frames Case Mirror as a possible premium preparation tool for serious competitors who need focused competition practice beyond general AI tools."
     },
     {
       name: "Enterprise",
-      price: "Custom pricing",
+      price: "Proposed custom tier",
       badge: "Scale",
       tone: "enterprise",
       description: "For universities, business schools, student clubs, entrepreneurship centres, incubators, accelerators, career centres, and organizations.",
@@ -1611,11 +1611,13 @@ function renderPricing() {
     `
       <section class="cm-pricing-hero">
         <div class="cm-pricing-copy">
-          <span class="cm-badge cm-badge--teal">Pricing model</span>
-          <h1 class="cm-page-title">Free to test.<br /><span>Built to scale.</span></h1>
+          <span class="cm-badge cm-badge--teal">Proposed pricing model</span>
+          <h1 class="cm-page-title">Free to test.<br /><span>Designed to scale.</span></h1>
           <p class="cm-page-lead">
-            Case Mirror moves from a low-friction student trial into premium individual prep,
-            team practice, and institution-wide programs.
+            These tiers are a proposed business model for the course MVP, not
+            active paid plans. They show how Case Mirror could move from a
+            low-friction student trial into premium prep and institution-wide
+            programs.
           </p>
           <div class="cm-pricing-path" aria-label="Pricing strategy">
             <span>Free</span>
@@ -1625,12 +1627,12 @@ function renderPricing() {
         </div>
 
         <aside class="cm-pricing-summary" aria-label="Pricing strategy summary">
-          <span class="cm-eyebrow">Final strategy</span>
+          <span class="cm-eyebrow">Business model hypothesis</span>
           <strong>Free -> Pro -> Enterprise</strong>
           <p>
-            Free brings users in, Pro monetizes serious individual competitors,
-            and Enterprise targets universities, clubs, incubators, and larger
-            organizations.
+            Free could bring users in, Pro could support serious individual
+            competitors, and Enterprise could target universities, clubs,
+            incubators, and larger organizations after validation.
           </p>
         </aside>
       </section>
@@ -1645,7 +1647,7 @@ function renderPricing() {
                     <span class="cm-badge ${plan.tone === "focus" ? "cm-badge--blue" : plan.tone === "team" ? "cm-badge--green" : plan.tone === "enterprise" ? "cm-badge--amber" : "cm-badge--teal"}">${plan.badge}</span>
                     <h2>${plan.name} Plan</h2>
                     <strong>${plan.price}</strong>
-                    ${plan.name === "Enterprise" ? "<small>Contact us for a quote</small>" : ""}
+                    ${plan.name === "Enterprise" ? "<small>Future institutional package</small>" : ""}
                     <p>${plan.description}</p>
                   </div>
 
