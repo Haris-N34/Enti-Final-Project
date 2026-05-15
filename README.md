@@ -135,7 +135,6 @@ See:
 Optional integrations currently referenced in the backend:
 
 - Qwen-compatible reasoning endpoint for prep and answer grading
-- Groq-compatible endpoint for live report synthesis
 - Tavily for market-context research
 - Deepgram for live transcription fallback
 - MediaPipe/OpenCV for observable body metrics in the upload pipeline
