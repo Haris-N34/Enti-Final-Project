@@ -83,14 +83,21 @@ Complete before final video and presentation:
 - No automated frontend browser tests yet.
 - Full webcam/microphone behavior depends on browser permissions.
 - Live model-provider paths require valid API keys.
-- Deployment smoke test still needs a final public URL.
+- Deployed frontend works, but the backend is local-only for this MVP.
+- Vercel serves the static app at `/`; `/case-mirror/` is not the deployed route because `case-mirror/` is configured as the output directory.
 
-## Final QA Evidence To Add
+## QA Evidence
 
 | Test | Browser / Environment | Date | Result | Notes |
 |---|---|---|---|---|
-| Local frontend run | TODO | TODO | TODO | TODO |
-| Backend health check | TODO | TODO | TODO | TODO |
-| Full demo flow | TODO | TODO | TODO | TODO |
-| Camera denied fallback | TODO | TODO | TODO | TODO |
-| Final video rehearsal | TODO | TODO | TODO | TODO |
+| Backend automated tests | Python 3.12.5, local `.venv` | May 15, 2026 | PASS | `18 passed in 0.18s` |
+| Frontend syntax check | Node `--check case-mirror/app.js` | May 15, 2026 | PASS | No syntax errors |
+| Python helper syntax check | `python3 -m py_compile serve_case_mirror.py` | May 15, 2026 | PASS | No syntax errors |
+| Local frontend run | `http://127.0.0.1:4173/` | May 15, 2026 | PASS | Returned `HTTP/1.0 200 OK` |
+| Backend health check | `http://127.0.0.1:8000/health` | May 15, 2026 | PASS | Returned `{"ok":true}` |
+| Live prepare endpoint | `POST /api/live/prepare` | May 15, 2026 | PASS with fallback | Returned judge questions and warnings for missing optional API keys |
+| Live answer grading endpoint | `POST /api/live/grade-answer` | May 15, 2026 | PASS with fallback | Returned scores, feedback, and follow-up question |
+| Deployed frontend root | `https://enti-final-project.vercel.app/` | May 15, 2026 | PASS | Returned `HTTP/2 200` |
+| Deployed frontend assets | `/app.js`, `/styles.css` | May 15, 2026 | PASS | Both assets returned `HTTP/2 200` |
+| Browser demo flow | Deployed frontend in browser | May 15, 2026 | PASS | Completed local profile, setup, brief, Q&A, and report flow |
+| Camera denied fallback | Browser demo flow without camera | May 15, 2026 | PASS | Typed-answer path remained usable without camera |

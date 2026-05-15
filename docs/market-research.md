@@ -26,9 +26,9 @@ This section should be completed with real conversations before final submission
 
 | Source | Person / Role | Date | Evidence Collected | Product Implication |
 |---|---|---|---|---|
-| Interview | TODO - case competitor | TODO | TODO | TODO |
-| Interview | TODO - case coach or TA | TODO | TODO | TODO |
-| Peer test | TODO - student team | TODO | TODO | TODO |
+| Interview | Case competitor | Pending | Pending | Pending |
+| Interview | Case coach or TA | Pending | Pending | Pending |
+| Peer test | Student team | Pending | Pending | Pending |
 
 Recommended interview questions:
 

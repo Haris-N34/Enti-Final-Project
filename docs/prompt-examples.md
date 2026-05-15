@@ -47,7 +47,7 @@ Audit this repository against ENTI 633 final project requirements. Be strict. Sc
 Human revision:
 
 - Converted the audit into concrete documentation fixes.
-- Added TODO slots where real evidence must be supplied by the team.
+- Added clearly marked slots where real evidence must be supplied by the team.
 - Avoided inventing interviews, links, or team names.
 
 ## Screenshot Checklist

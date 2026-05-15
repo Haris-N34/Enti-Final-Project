@@ -7,16 +7,16 @@ Final D2L submission should include one deliverable with these links or attachme
 | Item | Status | Link / Location |
 |---|---|---|
 | GitHub repository | Present | https://github.com/Haris-N34/Enti-Final-Project |
-| Published blog/article | TODO | TODO |
-| Direct video walkthrough | TODO | TODO |
-| Presentation slides | TODO | TODO |
+| Published blog/article | Pending final submission artifact | Add public article URL when ready |
+| Direct video walkthrough | Pending final submission artifact | Add direct video URL when ready |
+| Presentation slides | Pending final submission artifact | Add slide URL or attachment reference when ready |
 
 ## Optional
 
 | Item | Status | Link / Location |
 |---|---|---|
-| Live frontend deployment | TODO | TODO |
-| Live backend deployment | TODO | TODO |
+| Live frontend deployment | Present | https://enti-final-project.vercel.app/ |
+| Live backend deployment | Not deployed for MVP | Run locally with `casecoach/backend` instructions |
 
 ## Access Notes
 

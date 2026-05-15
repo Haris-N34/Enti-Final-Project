@@ -7,8 +7,9 @@ Case Mirror is an ENTI 633 final group project that helps student case-competiti
 - Course: ENTI 633 L01, Generative AI and Prompting
 - Program context: Master of Management, Haskayne School of Business, University of Calgary
 - Project type: Final Group Project, AI-Assisted Software Development
-- Team members: TODO - add every submitting team member before final submission
+- Team members: add the final submitting roster here before D2L submission
 - Repository: https://github.com/Haris-N34/Enti-Final-Project
+- Live frontend: https://enti-final-project.vercel.app/
 
 ## One-Sentence Pitch
 
@@ -50,13 +51,21 @@ The current live rehearsal flow supports:
 
 ## Screenshots
 
-Screenshots are stored or planned under `docs/images/`.
+Current app screenshots are stored under `docs/images/`.
 
-- TODO - add landing page screenshot.
-- TODO - add setup screen screenshot.
-- TODO - add Q&A rehearsal screenshot.
-- TODO - add final readiness report screenshot.
-- TODO - add prompt/workflow screenshots for the blog post.
+- [Landing page](./docs/images/landing-page.png)
+- [Setup form](./docs/images/setup-form.png)
+- [Generated brief](./docs/images/brief-page.png)
+- [Q&A rehearsal](./docs/images/qa-rehearsal.png)
+- [Final readiness report](./docs/images/final-report.png)
+- [Backend health check](./docs/images/backend-health.png)
+
+<table>
+  <tr>
+    <td><img src="./docs/images/landing-page.png" alt="Case Mirror landing page" width="420" /></td>
+    <td><img src="./docs/images/final-report.png" alt="Case Mirror readiness report" width="420" /></td>
+  </tr>
+</table>
 
 See [docs/screenshots.md](./docs/screenshots.md) for the required screenshot checklist.
 
@@ -93,6 +102,8 @@ See [docs/screenshots.md](./docs/screenshots.md) for the required screenshot che
 |- serve_case_mirror.py
 |- vercel.json
 |- LICENSE
+|- SECURITY.md
+|- CONTRIBUTING.md
 `- README.md
 ```
 
@@ -122,9 +133,11 @@ The backend is a FastAPI app in `casecoach/backend/`. It supports:
 
 Technical docs:
 
+- [docs/evidence-index.md](./docs/evidence-index.md)
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 - [docs/FRONTEND_GUIDE.md](./docs/FRONTEND_GUIDE.md)
 - [docs/API_OVERVIEW.md](./docs/API_OVERVIEW.md)
+- [docs/development-log.md](./docs/development-log.md)
 
 ## AI-Assisted Development Workflow
 
@@ -140,7 +153,7 @@ Development assistance included:
 - improving documentation and grading readiness
 - auditing the repo against the ENTI 633 final project requirements
 
-Important: final submission should include real screenshots of prompts and AI coding sessions. The documentation currently contains prompt examples and screenshot slots, but the team must add actual screenshots from the tools used.
+Important: final submission should include real screenshots of prompts and AI coding sessions. The repository now documents prompt examples and Codex-assisted repository work; the team should still add screenshots from any other main coding environment used by group members.
 
 See:
 
@@ -253,9 +266,10 @@ Manual QA is documented in [docs/testing.md](./docs/testing.md). The final submi
 
 Deployment status:
 
-- Live frontend URL: TODO - add if deployed.
-- Live backend URL: TODO - add if deployed.
-- If not deployed, submit the local run instructions and narrated video walkthrough.
+- Live frontend URL: https://enti-final-project.vercel.app/
+- Live frontend status: verified with `HTTP/2 200` on May 15, 2026.
+- Live backend URL: not deployed for this MVP; run the FastAPI backend locally for full live API support.
+- Deployment note: Vercel serves `case-mirror/` as the site root, so the correct deployed app URL is `/`, not `/case-mirror/`.
 
 ## Safety, Privacy, And Scope
 
@@ -278,9 +292,9 @@ See [docs/limitations-and-future-work.md](./docs/limitations-and-future-work.md)
 Final D2L submission requires:
 
 - GitHub repository link: https://github.com/Haris-N34/Enti-Final-Project
-- Published blog/article link: TODO
-- Direct video walkthrough link: TODO
-- Presentation slides link or attachment: TODO
+- Published blog/article link: pending final submission artifact
+- Direct video walkthrough link: pending final submission artifact
+- Presentation slides link or attachment: pending final submission artifact
 
 Planning docs:
 

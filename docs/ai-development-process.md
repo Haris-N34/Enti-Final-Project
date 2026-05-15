@@ -11,9 +11,20 @@ Fill this section with the exact tools used by the team before final submission.
 | Tool | Used For | Evidence To Include |
 |---|---|---|
 | Codex | Repository audit, documentation, implementation support, test/runnability checks | Screenshot of session and commit diff |
-| TODO - Cursor / Replit / Lovable / Bolt / v0 / other | Main AI coding environment if used | Screenshot of prompts and generated code review |
+| Pending team confirmation - Cursor / Replit / Lovable / Bolt / v0 / other | Main AI coding environment if used by group members | Screenshot of prompts and generated code review |
 | ChatGPT / Claude / Gemini | Ideation, requirements, prompt refinement, blog drafting, debugging | Prompt examples and revision notes |
 | Teachable Machine | Browser-side gesture/image model | Screenshot of classes/training/export |
+
+## Verified Repository Evidence
+
+| Evidence | Location | What It Proves |
+|---|---|---|
+| Course-compliance audit and documentation revision | Commit `d859f90` and current docs | AI-assisted repository setup, audit, and documentation improvement |
+| Prompt examples | [prompt-examples.md](./prompt-examples.md) | Representative prompts used or adapted during development |
+| Safety and scope documentation | [limitations-and-future-work.md](./limitations-and-future-work.md), backend tests | Human review of AI output boundaries |
+| Development iteration | [development-log.md](./development-log.md) | Multiple commits across UI, backend, model integration, deployment, and QA |
+
+The remaining high-value evidence is screenshots from the exact AI coding environment used by the team for main development.
 
 ## Workflow
 
