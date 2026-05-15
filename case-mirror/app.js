@@ -1246,8 +1246,8 @@ function initials(name) {
 
 function topNavMarkup(step = 0) {
   const accountMarkup = state.currentUser
-    ? `<span class="cm-session-chip">signed in · ${escapeHtml(initials(state.currentUser.name || state.currentUser.email))}</span><button class="cm-pill-btn cm-pill-btn--ghost" id="logoutBtn" type="button">Log out</button>`
-    : '<a class="cm-pill-btn cm-pill-btn--ghost" href="#/auth">Log in</a>';
+    ? `<span class="cm-session-chip">local profile · ${escapeHtml(initials(state.currentUser.name || state.currentUser.email))}</span><button class="cm-pill-btn cm-pill-btn--ghost" id="logoutBtn" type="button">Clear profile</button>`
+    : '<a class="cm-pill-btn cm-pill-btn--ghost" href="#/auth">Local profile</a>';
   const progress = [
     { route: "setup", label: "Setup" },
     { route: "brief", label: "Brief" },
@@ -1347,10 +1347,10 @@ function renderAuth() {
     `
       <section class="cm-auth-layout">
         <div class="cm-auth-panel">
-          <span class="cm-badge cm-badge--teal">User onboarding</span>
-          <h1 class="cm-page-title">${isSignup ? "Create your <span>practice profile.</span>" : "Welcome back to <span>Case Mirror.</span>"}</h1>
+          <span class="cm-badge cm-badge--teal">Local demo profile</span>
+          <h1 class="cm-page-title">${isSignup ? "Create your <span>practice profile.</span>" : "Continue your <span>local session.</span>"}</h1>
           <p class="cm-page-lead">
-            ${isSignup ? "Sign up to save your rehearsal access on this laptop and start a guided case practice session." : "Log in to continue into your case setup, Q&A rehearsal, and readiness report."}
+            ${isSignup ? "Create a local-only demo profile on this laptop so the rehearsal flow has a user context." : "Continue with a local demo profile saved in this browser. This is not production authentication."}
           </p>
 
           <form class="cm-auth-form" id="authForm">
@@ -1364,16 +1364,12 @@ function renderAuth() {
               <span>Email</span>
               <input id="authEmail" type="email" autocomplete="email" placeholder="student@example.com" required />
             </label>
-            <label>
-              <span>Password</span>
-              <input id="authPassword" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" placeholder="Minimum 6 characters" required minlength="6" />
-            </label>
 
             ${state.authError ? `<p class="cm-auth-error">${escapeHtml(state.authError)}</p>` : ""}
 
-            <button class="primary-btn cm-button-lift" type="submit">${isSignup ? "Create account" : "Log in"}</button>
+            <button class="primary-btn cm-button-lift" type="submit">${isSignup ? "Create local profile" : "Continue"}</button>
             <button class="secondary-btn" id="authModeToggle" type="button">
-              ${isSignup ? "Already have an account? Log in" : "Need an account? Sign up"}
+              ${isSignup ? "Already created a local profile? Continue" : "Need a local profile? Create one"}
             </button>
           </form>
         </div>
@@ -1385,6 +1381,7 @@ function renderAuth() {
             <li>AI-generated judge-style Q&A</li>
             <li>Readiness report after practice</li>
             <li>Local demo profile on this laptop</li>
+            <li>No password or production account required</li>
           </ul>
         </aside>
       </section>
@@ -3626,7 +3623,6 @@ function publicUser(user) {
 function handleAuthSubmit(event) {
   event.preventDefault();
   const email = textValue("authEmail").toLowerCase();
-  const password = document.getElementById("authPassword")?.value || "";
   const name = textValue("authName");
   const users = loadUsers();
 
@@ -3634,7 +3630,7 @@ function handleAuthSubmit(event) {
 
   if (state.authMode === "signup") {
     if (users.some((user) => user.email === email)) {
-      state.authError = "An account with this email already exists. Try logging in.";
+      state.authError = "A local demo profile with this email already exists. Use Continue instead.";
       render();
       return;
     }
@@ -3642,24 +3638,23 @@ function handleAuthSubmit(event) {
       id: createId(),
       name: name || email.split("@")[0],
       email,
-      password,
       createdAt: new Date().toISOString()
     };
     users.push(user);
     saveUsers(users);
     state.currentUser = publicUser(user);
     saveCurrentUser(state.currentUser);
-    showToast("Account created.");
+    showToast("Local profile created.");
   } else {
-    const user = users.find((item) => item.email === email && item.password === password);
+    const user = users.find((item) => item.email === email);
     if (!user) {
-      state.authError = "Email or password does not match.";
+      state.authError = "No local demo profile exists for that email on this browser.";
       render();
       return;
     }
     state.currentUser = publicUser(user);
     saveCurrentUser(state.currentUser);
-    showToast("Logged in.");
+    showToast("Local profile loaded.");
   }
 
   const nextRoute = state.authNextRoute || "setup";
@@ -3679,7 +3674,7 @@ function logoutUser() {
   saveCurrentUser(null);
   state.authMode = "login";
   state.authNextRoute = "setup";
-  showToast("Logged out.");
+  showToast("Local profile cleared.");
   go("home");
   render();
 }

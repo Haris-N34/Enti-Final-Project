@@ -1,24 +1,64 @@
 # Case Mirror / CaseCoach
 
-Case Mirror is a university final project for a Generative AI and Prompting course. It helps student teams rehearse for case competitions by turning their case prompt, judging criteria, recommendation, and supporting materials into a focused practice flow.
+Case Mirror is an ENTI 633 final group project that helps student case-competition teams rehearse under judge-style pressure, improve weak answers, and leave practice with a concrete readiness report.
 
-The repository currently contains two connected parts:
+## Course And Team
 
-- `case-mirror/`: static frontend for the user-facing rehearsal experience
-- `casecoach/backend/`: FastAPI backend for upload, analysis, reporting, and live practice support
+- Course: ENTI 633 L01, Generative AI and Prompting
+- Program context: Master of Management, Haskayne School of Business, University of Calgary
+- Project type: Final Group Project, AI-Assisted Software Development
+- Team members: TODO - add every submitting team member before final submission
+- Repository: https://github.com/Haris-N34/Enti-Final-Project
 
-## What the product does
+## One-Sentence Pitch
 
-Case Mirror is built around a practical case competition workflow:
+Case Mirror turns a team's case prompt, rubric, recommendation, speaking notes, and practice answers into a guided rehearsal flow with AI-assisted judge questions, answer feedback, delivery signals, and a final readiness report.
 
-1. Teams paste the case prompt, judging rubric, recommendation, and optional context.
-2. The app generates a case brief and critique.
-3. Teams rehearse judge-style Q&A with adaptive follow-up questions.
-4. The app produces a readiness report with strengths, weak spots, missed criteria, and next practice steps.
+## Problem And Market Opportunity
 
-The backend also supports a deeper media-analysis pipeline for uploaded presentation videos and slide decks. That path adds transcript analysis, slide extraction, timestamped feedback, and observable delivery/body metrics with explicit safety limits.
+Student case teams often practice too late, too generally, or without feedback that resembles the pressure of judge Q&A. Teams may know their recommendation but still struggle to defend assumptions, connect evidence to the rubric, manage time, and answer follow-up questions clearly.
 
-The current live rehearsal flow now also includes a browser-side Teachable Machine image model for gesture and upper-body movement classification. That model runs locally in the browser and feeds evidence such as open palms, neutral hands, pointing, arms crossed, hands too low, excessive movement, and one-hand emphasis into the final readiness report.
+Current alternatives include peer practice, coach feedback, generic presentation tools, and manual AI chat prompts. Those options can help, but they usually lack a structured end-to-end workflow for case-specific setup, rubric-aware Q&A, repeated answer practice, and a final improvement report.
+
+Case Mirror focuses on a specific wedge: case competition rehearsal for student teams. The product is not a generic chatbot. It is designed around the case workflow:
+
+1. Understand the case and rubric.
+2. Stress-test the recommendation.
+3. Practice judge-style questions.
+4. Capture answer and delivery evidence.
+5. Produce a concrete readiness report.
+
+See [docs/market-research.md](./docs/market-research.md), [docs/competitive-analysis.md](./docs/competitive-analysis.md), and [docs/requirements.md](./docs/requirements.md) for the business reasoning and requirements package.
+
+## Target Users
+
+- Primary user: student teams preparing for case competitions or case-based course presentations.
+- Secondary user: coaches, teaching assistants, and instructors who want teams to practice before live feedback sessions.
+- Buyer or sponsor context: business schools, entrepreneurship courses, consulting clubs, and student competition programs.
+
+## What The Product Does
+
+The current live rehearsal flow supports:
+
+- Case setup: users enter the case prompt, judging criteria, recommendation, company/context, constraints, and slide outline.
+- Case brief: the app generates a structured brief, risks, priorities, and recommendation critique.
+- Judge Q&A: users practice judge-style questions with typed-answer reliability and optional microphone support.
+- Adaptive follow-ups: weak or incomplete answers receive follow-up questions.
+- Readiness report: the app summarizes strengths, weak spots, missed criteria, suggested drills, and next practice steps.
+- Browser-side Teachable Machine support: an image model classifies visible upper-body/gesture patterns and feeds evidence such as open palms, neutral hands, pointing, arms crossed, hands too low, excessive movement, and one-hand emphasis into the final report.
+- Backend upload analysis: the FastAPI backend includes endpoints for recorded presentation analysis, transcript/slide processing, report artifacts, and observable delivery metrics.
+
+## Screenshots
+
+Screenshots are stored or planned under `docs/images/`.
+
+- TODO - add landing page screenshot.
+- TODO - add setup screen screenshot.
+- TODO - add Q&A rehearsal screenshot.
+- TODO - add final readiness report screenshot.
+- TODO - add prompt/workflow screenshots for the blog post.
+
+See [docs/screenshots.md](./docs/screenshots.md) for the required screenshot checklist.
 
 ## Repository Structure
 
@@ -28,8 +68,8 @@ The current live rehearsal flow now also includes a browser-side Teachable Machi
 |  |- index.html
 |  |- app.js
 |  |- styles.css
-|  |- assets/teachable-image/
-|  `- assets/images/
+|  |- assets/images/
+|  `- assets/teachable-image/
 |
 |- casecoach/
 |  `- backend/
@@ -42,56 +82,92 @@ The current live rehearsal flow now also includes a browser-side Teachable Machi
 |     |  |- scoring/
 |     |  `- storage/
 |     |- tests/
+|     |- .env.example
+|     |- API_KEYS.md
 |     |- README.md
-|     `- RUN_LIVE.md
+|     |- RUN_LIVE.md
+|     `- pyproject.toml
 |
+|- docs/
 |- index.html
-`- vercel.json
+|- serve_case_mirror.py
+|- vercel.json
+|- LICENSE
+`- README.md
 ```
 
-## Frontend Overview
+## Technical Overview
 
-The frontend is a static HTML/CSS/JS app served from `case-mirror/`.
+### Frontend
 
-Main pages in the current flow:
+The frontend is a static app in `case-mirror/` built with plain HTML, CSS, and JavaScript. It uses hash-based routing, `localStorage` session persistence, progressive enhancement for microphone/webcam access, and browser-loaded Teachable Machine assets.
+
+Main screens:
 
 - `Home`: product positioning and visual overview
 - `Setup`: case prompt, rubric, recommendation, and optional context
-- `Brief`: generated case brief and critique
+- `Brief`: generated case brief and recommendation critique
 - `Q&A`: judge-style rehearsal with typed fallback, microphone, and optional webcam preview
-- `Report`: final readiness report
+- `Report`: readiness report with answer, rubric, and delivery evidence
 
-Key frontend characteristics:
+### Backend
 
-- Vanilla JavaScript with hash-based routing
-- Local session persistence via `localStorage`
-- Static hosting friendly
-- Strong typed-answer fallback for demo reliability
-- Browser-side Teachable Machine gesture classification plus MediaPipe/body-motion sampling
-- Safety language embedded in the UI
+The backend is a FastAPI app in `casecoach/backend/`. It supports:
 
-## Backend Overview
+- uploaded presentation analysis
+- live preparation
+- live answer grading
+- final live report synthesis
+- transcript, slide, body-metric, timeline, and JSON export artifacts
 
-The backend is a FastAPI app under `casecoach/backend/`.
+Technical docs:
 
-It supports two main modes:
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
+- [docs/FRONTEND_GUIDE.md](./docs/FRONTEND_GUIDE.md)
+- [docs/API_OVERVIEW.md](./docs/API_OVERVIEW.md)
 
-- Uploaded presentation analysis:
-  analyze recorded presentation video plus optional slide deck
-- Live rehearsal support:
-  generate live prep bullets, judge questions, and answer grading
+## AI-Assisted Development Workflow
 
-Main backend responsibilities:
+This project was developed as an AI-assisted software development project. The repository documents both the AI features inside the product and the AI-assisted coding process used to build it.
 
-- ingest uploads
-- persist jobs and artifact paths
-- transcribe and preprocess media
-- extract slides and observable metrics
-- call external model providers
-- score content, delivery, slides, and Q&A
-- return report artifacts through JSON endpoints
+Development assistance included:
+
+- ideating the problem and product scope
+- drafting requirements and user stories
+- generating and revising frontend interaction flows
+- building FastAPI endpoint structure and safety boundaries
+- creating test cases for backend scoring and safety behavior
+- improving documentation and grading readiness
+- auditing the repo against the ENTI 633 final project requirements
+
+Important: final submission should include real screenshots of prompts and AI coding sessions. The documentation currently contains prompt examples and screenshot slots, but the team must add actual screenshots from the tools used.
+
+See:
+
+- [docs/ai-development-process.md](./docs/ai-development-process.md)
+- [docs/prompt-examples.md](./docs/prompt-examples.md)
+
+## Requirements And Scope
+
+The MVP prioritizes a stable live demo path over a full production platform. The must-have workflow is:
+
+1. Enter case materials.
+2. Generate a case brief and critique.
+3. Practice judge-style questions.
+4. Record typed answers reliably.
+5. Optionally capture browser-side delivery evidence.
+6. Generate a final readiness report.
+
+See [docs/requirements.md](./docs/requirements.md) and [docs/user-stories.md](./docs/user-stories.md).
 
 ## Local Development
+
+### Prerequisites
+
+- Python 3.12 for the backend
+- Python 3.x for the static frontend server
+- `ffmpeg` and `ffprobe` for full media-analysis support
+- Optional model/API keys for Qwen, Groq, Tavily, and Deepgram
 
 ### Frontend
 
@@ -125,6 +201,12 @@ Health check:
 curl http://localhost:8000/health
 ```
 
+Expected response:
+
+```json
+{"ok":true}
+```
+
 ### Environment
 
 See:
@@ -132,9 +214,10 @@ See:
 - [casecoach/backend/.env.example](./casecoach/backend/.env.example)
 - [casecoach/backend/API_KEYS.md](./casecoach/backend/API_KEYS.md)
 
-Optional integrations currently referenced in the backend:
+Optional integrations:
 
-- Qwen-compatible reasoning endpoint for prep and answer grading
+- Qwen-compatible reasoning endpoint for prep, answer grading, and report synthesis
+- Groq-compatible endpoint for secondary report fallback
 - Tavily for market-context research
 - Deepgram for live transcription fallback
 - MediaPipe/OpenCV for observable body metrics in the upload pipeline
@@ -144,16 +227,39 @@ Browser-side live rehearsal also depends on:
 - Teachable Machine image model assets in `case-mirror/assets/teachable-image/`
 - `@teachablemachine/image` loaded in `case-mirror/index.html`
 
-## Deployment Notes
+## Testing And QA
 
-- `vercel.json` points the deployable output directory at `case-mirror/`
-- The frontend is static and can be hosted independently
-- Camera and microphone features need `localhost` or HTTPS
-- Backend deployment should keep API keys on the server side only
+Backend automated tests:
 
-## Safety and Scope
+```bash
+cd casecoach/backend
+.venv/bin/python -m pytest -q
+```
 
-This project is a practice and coaching tool, not an official judging engine.
+Last local audit result:
+
+```text
+18 passed
+```
+
+Manual QA is documented in [docs/testing.md](./docs/testing.md). The final submission should include the exact browser/device/date used for the last demo rehearsal.
+
+## Deployment
+
+- `vercel.json` points the deployable output directory at `case-mirror/`.
+- The frontend is static and can be hosted independently.
+- Camera and microphone features require `localhost` or HTTPS.
+- Backend deployment must keep API keys server-side only.
+
+Deployment status:
+
+- Live frontend URL: TODO - add if deployed.
+- Live backend URL: TODO - add if deployed.
+- If not deployed, submit the local run instructions and narrated video walkthrough.
+
+## Safety, Privacy, And Scope
+
+Case Mirror is a practice and coaching tool, not an official judging engine.
 
 The system is designed to avoid:
 
@@ -163,16 +269,26 @@ The system is designed to avoid:
 - emotion or personality analysis
 - unsupported body-language conclusions
 
-Observable delivery/body signals are framed as coaching proxies, not psychological or identity judgments.
+Observable delivery/body signals are framed as coaching proxies only. The browser-side demo profile is local-only and does not provide production authentication. API keys belong only in local `.env` files or deployment environment variables, never in the repository.
 
-## Documentation
+See [docs/limitations-and-future-work.md](./docs/limitations-and-future-work.md).
 
-Additional project documentation lives in `docs/`:
+## Blog, Video, And Presentation
 
-- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
-- [docs/FRONTEND_GUIDE.md](./docs/FRONTEND_GUIDE.md)
-- [docs/API_OVERVIEW.md](./docs/API_OVERVIEW.md)
+Final D2L submission requires:
 
-## Current State
+- GitHub repository link: https://github.com/Haris-N34/Enti-Final-Project
+- Published blog/article link: TODO
+- Direct video walkthrough link: TODO
+- Presentation slides link or attachment: TODO
 
-This repository is already beyond a blank MVP. The frontend has a polished landing page and guided rehearsal flow, and the backend includes both offline analysis and live practice endpoints. The main documentation gap was project structure and onboarding clarity, which this README and the `docs/` folder are intended to fix.
+Planning docs:
+
+- [docs/blog-outline.md](./docs/blog-outline.md)
+- [docs/demo-script.md](./docs/demo-script.md)
+- [docs/presentation-outline.md](./docs/presentation-outline.md)
+- [docs/submission-links.md](./docs/submission-links.md)
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](./LICENSE).

@@ -49,7 +49,10 @@ async def upload_presentation(
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         deck_path = job_dir / "uploads" / safe_upload_name(slide_deck.filename, "slides.pdf")
-        objects.copy_stream_limited(slide_deck.file, deck_path, settings.max_upload_bytes)
+        try:
+            objects.copy_stream_limited(slide_deck.file, deck_path, settings.max_upload_bytes)
+        except ValueError as exc:
+            raise HTTPException(status_code=413, detail=str(exc)) from exc
         paths["slide_deck"] = str(deck_path)
 
     members = _parse_team_members(team_members)
@@ -76,4 +79,3 @@ def _parse_team_members(value: str) -> list[str]:
     except json.JSONDecodeError:
         pass
     return [item.strip() for item in value.split(",") if item.strip()]
-
