@@ -101,3 +101,33 @@ Complete before final video and presentation:
 | Deployed frontend assets | `/app.js`, `/styles.css` | May 15, 2026 | PASS | Both assets returned `HTTP/2 200` |
 | Browser demo flow | Deployed frontend in browser | May 15, 2026 | PASS | Completed local profile, setup, brief, Q&A, and report flow |
 | Camera denied fallback | Browser demo flow without camera | May 15, 2026 | PASS | Typed-answer path remained usable without camera |
+
+## Final Pre-Submission QA
+
+Run this checklist immediately before recording the walkthrough video,
+presenting, or submitting the D2L deliverable.
+
+| Test | Browser / Environment | Date | Result | Notes |
+|---|---|---|---|---|
+| Backend automated tests | Python 3.12.5, local `.venv` | May 15, 2026 | PASS | `.venv/bin/python -m pytest -q` returned `18 passed` |
+| Frontend syntax check | Node `--check case-mirror/app.js` | May 15, 2026 | PASS | No syntax errors |
+| Python helper syntax check | `python3 -m py_compile serve_case_mirror.py` | May 15, 2026 | PASS | No syntax errors |
+| Local backend health check | Local FastAPI backend | May 15, 2026 | PASS | `curl http://localhost:8000/health` returned `{"ok":true}` |
+| Deployed frontend smoke check | Vercel static frontend | May 15, 2026 | PASS | `curl -I https://enti-final-project.vercel.app/` returned `HTTP/2 200` |
+| Risky copy scan | Repository text search | May 15, 2026 | PASS | No leftover unsupported traction strings or merge markers found |
+
+## Final Manual Browser QA Checklist
+
+- Landing page loads from the deployed frontend.
+- Local profile can be created or continued.
+- `Load sample case` works.
+- Setup form validates required fields.
+- Brief page generates.
+- Q&A page appears.
+- Typed answer can be entered.
+- Follow-up or skip controls work.
+- Final report generates.
+- Camera denied state does not block typed rehearsal.
+- Microphone denied state does not block typed rehearsal.
+- The app copy frames pricing as a proposed MVP model, not a live commercial
+  product.
